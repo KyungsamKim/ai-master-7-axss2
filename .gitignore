@@ -1,0 +1,45 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# ===== 가상환경 =====
+.venv/
+venv/
+env/
+ENV/
+
+# ===== 환경변수 / 비밀 =====
+.env
+.env.*
+!.env.example
+*.key
+secrets.*
+
+# ===== Jupyter =====
+.ipynb_checkpoints/
+
+# ===== 벡터 DB / 로컬 데이터 =====
+chroma/
+*.sqlite3
+*.db
+data/local/
+.cache/
+
+# ===== 로그 / 임시 =====
+*.log
+logs/
+tmp/
+.DS_Store
+
+# ===== IDE =====
+.idea/
+.vscode/
+*.iml
+
+# ===== LLM 응답 캐시 등 (선택) =====
+.langchain/
+.chainlit/
