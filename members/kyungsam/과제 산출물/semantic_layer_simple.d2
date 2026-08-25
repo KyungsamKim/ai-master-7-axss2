@@ -1,0 +1,289 @@
+direction: down
+
+# 각 다이어그램의 id 가 실제 집계 엔진에서 사용하는 키.
+
+AggGrid: {
+
+    label: |md
+      **집계처리엔진**
+    
+      집계축, 측정값을 기준으로 rawdata 를 집계할 수 있는 그리드.
+      |
+      alias : ["집계엔진", "집계계산도구"]
+
+    Format: {
+        dim_month: {
+            label: |md
+                **연월서식**
+
+                연도 및 월은 YYYY-MM 혹은 YYYYMM으로 표현한다.
+            |
+        },
+        currency_fmt: {
+            fmt_plain_dollar : {
+                label: |md
+                    **달러표기**
+                    예를들어, 10000000달러는 10,000,000 으로 표기
+                    |
+            }
+            fmt_million_dollar : {
+                label: |md
+                    **백만달러표기**
+                    예를들어, 10000000달러는 10 으로 표기
+                    |
+            }
+            fmt_billion_dollar : {
+                label: |md
+                    **10억달러표기**
+                    예를들어, 1000000000달러는 1 로 표기
+                    |
+            }                        
+        }
+
+    }
+
+    # 집계축
+    Dimension {
+
+        label: |md
+          **집계축**
+          scm_family_cd 는 항상 포함시킬것.
+        |
+        alias: ["디멘션", "어그리게이션 기준", "그룹바이"]
+
+
+        scm_family_cd: {
+
+            label: |md
+              **Family**
+              패밀리
+              메모리 반도체의 DRAM, NAND 제품 그룹 구분
+              DRAM과 NAND 각각 집계를 다르게 하므로 집계처리엔진에 기본적으로 포함되어야 하는 집계축이다.
+              **필수로 포함시킬것**
+
+              alias:
+              - SCM패밀리코드 제품군
+
+              instances:
+              - `DRAM` - 디램
+              - `NAND` - 낸드
+            |
+            alias: ['Family', 'FAMILY']
+            enum: ['DRAM', 'NAND']
+
+        }
+
+        tech_cd: {
+
+            label: |md
+              **테크**
+              테크코드
+              반도체 제조 공정의 세대를 식별하는 고유 코드명
+
+              instances:
+              DRAM              
+              - `PO`: Procyon, 프로키온
+              - `SP`: Spica, 스피카
+              - `LC`: Lucy, 루시
+              - `CP`: Canopus, 캐노퍼스 
+              - `RG`: Rigel, 리젤
+              - `DA`: Da Vinci, 다빈치
+              - `AL`: Alius, 아리우스
+              - `DE`: Deneb, 데네브
+              - `PL`: Polaris, 폴라리스
+
+             NAND
+              - `OP`: Olympus, 올림푸스
+              - `CL`: Colosseum, 콜로세움
+              - `PE`: Petra, 페트라
+              - `LD`: La Defense, 라데팡스 
+              - `PT`: Parthenon, 파르테논
+              - `HR`: Hercules, 헤라클레스
+              - `ST`: Stella, 스텔라
+              - `QS`: Quasar, 퀘이사
+              - `F32`: Kanchen, 칸첸
+              - `F41`: Makalu, 마칼루                                                                                                
+            |
+            alias: ['Tech', 'TECH']
+            rule: 테크를 '기술'로 번역하지 말 것
+            enum:
+            DRAM
+              - ['AL', 'CP', 'DA', 'DC', 'DE', 'GM', 'HM', 'LC', 'NV', 'OR', 'PL', 'RG', 'SP', 'TV', 'VG']
+            NAND
+              - ['OP', 'CL', 'PE', 'LD', 'PT', 'HR', 'ST', 'QS', 'F32', 'F41']
+        }
+
+        fab_den_cd: {
+
+            label: |md
+              **FAB Dens**
+              FAB Density, Wafer의 용량
+              제조공정 집적도 코드                                                         
+            |
+            alias: ['용량', 'Fab_density', '팹 덴시티', 'Dens']
+            rule: 사용자 질의에 'T/D/M', 'TDM', 'T/D/M/C/P', 'TDMCP' 글자가 포함될 때 'D'를 의미
+            enum:
+            DRAM
+              - ['32G', '24G', '16G', '8G', '6G', '4G', '2G', '1G', '0G']
+            NAND
+              - ['2T', '1T', '512G', '256G', '128G', '64G', '32G', '4G', '2G', '1G']
+        }
+
+        chg_prod_mode_cd: {
+
+            label: |md
+              **Mode**
+              모드
+              Family 내 제품 세부 분류
+
+              instances:
+              DRAM              
+              - `DDR5`:  디디알5, D5
+              - `DDR4`:  디디알4, D4
+              - `DDR3`:  디디알3, D3
+              - `ULP`:   유엘피, ULP, ULP Ultra Low Power, 초저전력, 배터리, IOT
+              - `GDDR7`: 지디디알7, GDDR, 그래픽 메모리
+              - `GDDR6`: 지디디알6, GDDR, 그래픽 메모리
+              - `HBM4`:  에이치비엠4, High Bandwidth Memory, AI
+              - `HBM3`:  에이치비엠3, High Bandwidth Memory, AI
+              - `HBM2E`: 에이치비엠2, High Bandwidth Memory, AI 
+              - `LPDDR6`: 엘피디디알6, Low Power Memory, 저전력 모바일
+              - `LPDDR5`: 엘피디디알5, Low Power Memory, 저전력 모바일
+              - `LPDDR4`: 엘피디디알4, Low Power Memory, 저전력 모바일
+
+                                                                                              
+            |
+            alias: ['모드']
+            rule: 'T/D/M' 포함 시 'M 의미.
+        }        
+
+        scm_prod_ver_cd: {
+
+            label: |md
+              **P.ver**
+              SCM제품버전코드
+
+              instances:
+              DRAM              
+              - `1ST`
+              - `1ST DC BASE`
+              - `2ND`
+              - `3RD`
+              - `CNG`
+                                                                                              
+            |
+            alias: ['P버전', '피버전']
+        }
+
+        app_lvl_1_cd: {
+
+            label: |md
+              **App**
+              제품 응용(Application) 구분 코드
+
+              instances:
+              DRAM              
+              - `PC`: PC, 피씨, Computing, 컴퓨팅
+              - `SV`: Server, 서버, 에스브이, Computing, 컴퓨팅
+              - `CO`: Consumer, 컨슈머, CNG
+              - `GP`: 그래픽, Graphics, CNG
+              - `MO`: Mobile, 모바일
+              - `MC`: MCP, Multi Chip Package, Hybrid, 하이브리드, Mobile, 모바일
+              - `CS`: SSD Client, SSD Brand, 에스에스디
+              - `ES`: SSD Enterprise, SSD Data Center, 에스에스디
+              - `HB`: HBM, GPU, 지피유, 에이치비엠
+                                                                                              
+            |
+            alias: ['어플리케이션', '응용', '제품', 'Application', '응복제품']
+        }
+
+        tgt_ym: {
+
+            label: |md
+              **월**
+              대상년월
+
+              1~12 월 YYYYMM 형식으로 저장됨
+
+              fmt:
+                - dim_month
+
+              alias:
+                - 월
+                - 기간
+                - 시점
+                - 시기
+                - 언제
+                - yyyymm
+            |
+            alias: ['Period']
+            fmt: dim_month
+        }                 
+
+        tgt_qutr: {
+
+            label: |md
+              **분기**
+              대상분기
+              1~4 표시 시 형식 YYYY01 - YYYY04
+              |
+              alias:
+                - 분기
+                - 기간
+                - 시점
+                - 시기
+                - 언제
+                - yyyy01
+            |
+            alias: ['Period']
+        }     
+
+        tgt_half: {
+
+            label: |md
+              **대상반기**
+              
+              1~2 반기 연도와 합쳐서 YYYY01, YYYY02로 저장됨
+              - (상/하)반기
+              |
+              alias:
+                - 반기
+                - 기간
+                - 시점
+                - 시기
+                - 언제
+                - yyyy01                
+            |
+            alias: ['Period']
+        }     
+
+        tgt_year: {
+
+            label: |md
+              **대상년도**
+              
+              연도 YYYY 표기
+              |
+              alias:
+                - 년도
+                - 기간
+                - 시점
+                - 시기
+                - 언제
+                - yyyy년                
+            |
+            alias: ['Period']
+        }   
+
+    }
+
+    # 측정값
+    Measure: {
+
+        label: |md
+        
+
+    }
+
+    
+}
