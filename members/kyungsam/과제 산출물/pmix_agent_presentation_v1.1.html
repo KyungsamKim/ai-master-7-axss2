@@ -1,0 +1,1407 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SKHy G-SCM P-Mix 수익성 Simulation Agent 구축</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{
+  --ink:#111820; --ink2:#3D4A5C; --ink3:#77849A;
+  --paper:#FFFFFF; --wash:#F4F6FA; --wash2:#E9EDF3; --line:#DDE3EC;
+  --accent:#3B56D6; --accent2:#5468E6;
+  --agent:#3B56D6; --agent-bg:#EEF2FF; --agent-line:#C3CCF7;
+  --mcp:#B25A1C; --mcp-bg:#FDEEDE; --mcp-line:#F0CFA8;
+  --green:#0D6E52; --green-bg:#DAF3E7; --green-line:#7FD3AE;
+  --font:"Pretendard","Pretendard Variable",-apple-system,BlinkMacSystemFont,"Malgun Gothic",sans-serif;
+  --mono:"JetBrains Mono","SFMono-Regular",Consolas,"D2Coding",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--font);background:#20262F;color:var(--ink);overflow:hidden;-webkit-font-smoothing:antialiased}
+#stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+#deck{width:1280px;height:720px;position:relative;transform-origin:center center}
+.slide{position:absolute;inset:0;background:var(--paper);padding:40px 54px 50px;display:none;flex-direction:column}
+.slide.on{display:flex}
+.slide::before{content:"";position:absolute;left:0;top:0;height:5px;width:100%;
+  background:linear-gradient(90deg,#8b95a7 0%,#4a6da0 42%,#3b56d6 100%)}
+
+.chapter{font-size:12.5px;letter-spacing:.02em;color:var(--accent);font-weight:800;margin-bottom:6px}
+h1{font-size:29px;font-weight:800;letter-spacing:-.02em;line-height:1.25}
+.sub{font-size:14.5px;color:var(--ink2);margin-top:8px;line-height:1.6;font-weight:500}
+.sub b{color:var(--ink);font-weight:700}
+.head{border-bottom:1px solid var(--line);padding-bottom:13px;margin-bottom:18px;flex:none}
+.body{flex:1;min-height:0;display:flex;flex-direction:column;gap:14px;justify-content:center}
+.pageno{position:absolute;right:24px;bottom:18px;font-size:11.5px;color:var(--ink3);font-variant-numeric:tabular-nums}
+#bar{position:absolute;left:0;bottom:0;height:3px;background:var(--accent);transition:width .22s ease}
+
+.grid{display:grid;gap:13px}
+.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}
+.card{background:var(--wash);border:1px solid var(--line);border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:7px}
+.card h3{font-size:16px;font-weight:800;line-height:1.35}
+.card p{font-size:13.6px;color:var(--ink2);line-height:1.62}
+.grid.tall .card{min-height:206px;padding:19px 21px}
+.card .num{width:23px;height:23px;border-radius:7px;background:var(--agent);color:#fff;font-size:12.5px;font-weight:800;display:grid;place-items:center;flex:none}
+.note{font-size:12.5px;color:var(--ink3);line-height:1.6;padding-left:14px;position:relative}
+.note::before{content:"·";position:absolute;left:3px;top:-1px;font-weight:800}
+.note b{color:var(--ink2)}
+.callout{border-left:3px solid var(--accent);background:#fff;border-radius:0 8px 8px 0;padding:11px 14px;font-size:12.5px;line-height:1.6;color:var(--ink2)}
+.kw{color:var(--accent);font-weight:700}
+
+/* cover */
+.cover{justify-content:center;padding:0 76px}
+.cover .eyebrow{font-size:14.5px;color:var(--ink3);font-weight:700;margin-bottom:18px}
+.cover h1{font-size:50px;line-height:1.22;letter-spacing:-.03em}
+.cover .rule{width:64px;height:4px;background:var(--accent);margin:28px 0 24px;border-radius:2px}
+.cover .lede{font-size:17px;color:var(--ink2);line-height:1.7;max-width:780px;font-weight:500}
+.cover .meta{margin-top:42px;font-size:14px;color:var(--ink3);display:flex;gap:26px}
+
+/* intro (2P) */
+.intro{display:flex;flex-direction:column;gap:20px;justify-content:center;flex:1}
+.introlede{font-size:22px;line-height:1.6;font-weight:700;letter-spacing:-.02em}
+.introlede em{font-style:normal;color:var(--accent)}
+.pill3{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+.pill{border:1px solid var(--agent-line);background:var(--agent-bg);border-radius:11px;padding:17px 19px}
+.pill .t{font-size:15px;font-weight:800;color:var(--agent);margin-bottom:6px}
+.pill p{font-size:13.4px;color:var(--ink2);line-height:1.6}
+
+/* agenda */
+.agenda{display:flex;flex-direction:column;flex:1;justify-content:center}
+.arow{display:grid;grid-template-columns:70px 1fr;align-items:center;gap:22px;padding:22px 4px;border-bottom:1px solid var(--line)}
+.arow:last-child{border-bottom:none}
+.arow .ch{font-size:13px;font-weight:800;color:var(--accent);letter-spacing:.04em}
+.arow .tt{font-size:21px;font-weight:700}
+.arow .tt span{display:block;font-size:13.5px;font-weight:500;color:var(--ink3);margin-top:5px}
+
+/* embed wrapper */
+.embed{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.embed>.in{transform-origin:center center}
+
+/* layer list (8P) */
+.lyrs{display:flex;flex-direction:column;gap:9px;flex:1;justify-content:center}
+.lyr{display:grid;grid-template-columns:150px 1fr;gap:14px;align-items:stretch}
+.lyr .lab{display:flex;align-items:center;gap:10px;border-radius:9px;padding:11px 13px;
+  border:1.4px solid var(--green-line);background:var(--green-bg)}
+.lyr.ph2 .lab{border-color:var(--agent-line);background:var(--agent-bg);border-style:dashed}
+.lyr .lab .n{width:23px;height:23px;border-radius:50%;background:var(--agent);color:#fff;
+  font-size:12px;font-weight:800;display:grid;place-items:center;flex:none}
+.lyr .lab .nm{font-size:14.5px;font-weight:800;color:var(--green)}
+.lyr.ph2 .lab .nm{color:var(--agent)}
+.lyr .dsc{border:1px solid var(--line);border-radius:9px;padding:11px 15px;background:var(--paper);
+  display:flex;flex-direction:column;justify-content:center;gap:4px}
+.lyr .dsc .d1{font-size:13.8px;font-weight:700;line-height:1.45}
+.lyr .dsc .d2{font-size:12.4px;color:var(--ink3);line-height:1.5}
+.lyr .dsc .d2 b{color:var(--ink2);font-weight:700}
+
+/* ---- 구현 특징 (10P/11P) ---- */
+.feat{display:flex;flex-direction:column;gap:12px;flex:1;justify-content:center}
+.fitem{display:grid;grid-template-columns:38px 1fr;gap:14px;
+  border:1px solid var(--line);border-radius:11px;padding:15px 18px;background:var(--paper)}
+.fitem .fn{width:28px;height:28px;border-radius:8px;background:var(--agent);color:#fff;
+  font-size:13px;font-weight:800;display:grid;place-items:center;margin-top:2px}
+.fitem .ft{font-size:16px;font-weight:800;margin-bottom:5px}
+.fitem .ft em{font-style:normal;color:var(--agent)}
+.fitem .fd{font-size:13.4px;color:var(--ink2);line-height:1.6}
+.fitem .fh{margin-top:8px;background:var(--wash);border-left:3px solid var(--agent-line);
+  border-radius:0 8px 8px 0;padding:9px 13px;font-size:12.6px;line-height:1.6;color:var(--ink2)}
+.fitem .fh b{color:var(--agent);font-weight:800}
+.banner{background:linear-gradient(180deg,#f6f8ff,#eef2ff);border:1.4px solid var(--agent-line);
+  border-radius:11px;padding:13px 18px;font-size:14.4px;font-weight:700;color:#28325a;line-height:1.5}
+.banner em{font-style:normal;color:var(--agent)}
+
+/* ---- 기술 스택 ---- */
+.stack{display:flex;flex-direction:column}
+.srow{display:grid;grid-template-columns:180px 1fr;gap:20px;padding:13px 6px;border-bottom:1px solid var(--line);align-items:baseline}
+.srow:last-child{border-bottom:none}
+.srow .nm{font-family:var(--mono);font-size:13.4px;font-weight:700}
+.srow .ds{font-size:13px;color:var(--ink2);line-height:1.55}
+.srow .ds em{font-style:normal;color:var(--accent);font-weight:700}
+
+/* ---- 효과 ---- */
+.eff{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.ecard{border:1px solid var(--line);border-radius:10px;padding:17px 19px;display:flex;flex-direction:column;gap:8px;min-height:168px}
+.ecard .top{display:flex;align-items:center;gap:9px}
+.ecard .ic{width:24px;height:24px;border-radius:7px;background:var(--agent);color:#fff;font-size:12px;font-weight:800;display:grid;place-items:center;flex:none}
+.ecard h3{font-size:15.5px;font-weight:800;line-height:1.3}
+.ecard p{font-size:13.1px;color:var(--ink2);line-height:1.6}
+.ba{display:flex;align-items:center;gap:8px;font-size:12px;margin-top:2px}
+.ba .b{background:var(--wash2);border-radius:6px;padding:4px 9px;color:var(--ink3);font-weight:600}
+.ba .a{background:var(--agent-bg);border-radius:6px;padding:4px 9px;color:var(--agent);font-weight:700}
+.ba .ar{color:var(--ink3)}
+
+/* ---- lessons ---- */
+.less{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.lcard{border:1px solid var(--line);border-radius:9px;padding:15px 17px;display:flex;gap:12px;align-items:flex-start;min-height:92px}
+.lcard .n{font-size:15px;font-weight:800;color:var(--agent);flex:none;width:20px;font-variant-numeric:tabular-nums}
+.lcard .tx{font-size:13.1px;line-height:1.58;color:var(--ink2)}
+.lcard .tx b{color:var(--ink);font-weight:800}
+
+/* ---- closing ---- */
+.closing{justify-content:center;align-items:flex-start;padding:0 76px}
+.closing h1{font-size:40px;line-height:1.3}
+.closing .rule{width:64px;height:4px;background:var(--accent);margin:24px 0 22px;border-radius:2px}
+.closing p{font-size:16.5px;color:var(--ink2);line-height:1.75;max-width:740px}
+.closing p b{color:var(--ink)}
+
+/* ---- overview / help ---- */
+#ov{position:fixed;inset:0;background:#171C24;z-index:50;display:none;overflow:auto;padding:34px}
+#ov.on{display:block}
+#ovg{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;max-width:1180px;margin:0 auto}
+.thumb{background:#fff;border-radius:8px;aspect-ratio:16/9;position:relative;cursor:pointer;overflow:hidden;border:2px solid transparent;padding:12px}
+.thumb:hover,.thumb.cur{border-color:var(--accent)}
+.thumb .tn{position:absolute;right:8px;bottom:6px;font-size:10px;color:var(--ink3)}
+.thumb .tt{font-size:12px;font-weight:800;line-height:1.35;color:var(--ink)}
+.thumb .tc{font-size:9.5px;color:var(--accent);font-weight:800;margin-bottom:4px}
+#help{position:fixed;left:16px;bottom:14px;font-size:11.5px;color:#8892A0;z-index:20;transition:opacity .5s ease}
+#help.hide{opacity:0}
+@media print{
+  body{background:#fff;overflow:visible}
+  #stage{position:static}
+  #deck{transform:none!important;width:100%;height:auto}
+  .slide{display:flex!important;position:relative;width:1280px;height:720px;page-break-after:always;break-after:page}
+  #help,#ov{display:none!important}
+  @page{size:1280px 720px;margin:0}
+}
+
+/* ===== embedded: roadmap ===== */
+
+  .emb-rm{
+    --ink:#1e2530;
+    --muted:#5a6577;
+    --line:#e3e8f0;
+    --page:#e9edf3;
+
+    --head-a:#313d54;
+    --head-b:#44547320;
+
+    --was:#8b95a7;
+    --was-bg:#f4f6f9;
+    --was-lbl:#e4e8ef;
+
+    --is:#4a6da0;
+    --is-bg:#eef3fb;
+    --is-lbl:#dbe6f6;
+
+    --to:#3b56d6;
+    --to-bg:#f3f5ff;
+
+    --green-bg:#daf3e7;--green-bd:#7fd3ae;--green-tx:#0d6e52;
+    --blue-bg:#dde8fc;--blue-bd:#9bbdf0;--blue-tx:#1b4bd6;
+    --agent:#3b56d6;
+    --check:#12a07a;
+  }
+
+  /* ---- Matrix grid ---- */
+  .rm-matrix{
+    display:grid;
+    grid-template-columns:150px repeat(4,1fr);
+    column-gap:16px;row-gap:14px;
+    margin-top:6px;
+  }
+
+  /* header phase bar */
+  .rm-phase{
+    grid-row:1;
+    position:relative;
+    background:linear-gradient(180deg,#3a4762,#2c374d);
+    color:#fff;
+    border-radius:11px;
+    padding:13px 10px;
+    text-align:center;
+    font-size:15px;font-weight:700;
+    box-shadow:0 6px 14px -8px rgba(30,45,80,.5);
+  }
+  .rm-phase:not(.rm-last)::after{
+    content:"";position:absolute;right:-15px;top:50%;
+    transform:translateY(-50%);
+    width:0;height:0;
+    border-top:9px solid transparent;
+    border-bottom:9px solid transparent;
+    border-left:11px solid #b7c1d3;
+    z-index:2;
+  }
+  .rm-p1{grid-column:2/3}.rm-p2{grid-column:3/4}.rm-p3{grid-column:4/5}.rm-p4{grid-column:5/6}
+
+  /* left stage labels */
+  .rm-stage{
+    border-radius:13px;
+    padding:16px 14px;
+    display:flex;flex-direction:column;justify-content:center;gap:4px;
+    color:#fff;
+  }
+  .rm-stage .rm-n{font-size:19px;font-weight:800;letter-spacing:-.02em}
+  .rm-stage .rm-s{font-size:11.5px;font-weight:500;opacity:.92;line-height:1.35}
+  .rm-stage.rm-was{background:linear-gradient(160deg,#9aa4b6,#7c8699);grid-column:1;grid-row:2}
+  .rm-stage.rm-is {background:linear-gradient(160deg,#5a7cae,#42618f);grid-column:1;grid-row:3}
+  .rm-stage.rm-to {background:linear-gradient(160deg,#5468e6,#3547c4);grid-column:1;grid-row:4/6;
+             box-shadow:0 10px 22px -12px rgba(59,86,214,.6)}
+
+  /* content cells */
+  .rm-cell{display:flex;flex-direction:column;gap:8px}
+  .rm-r-was{grid-row:2}.rm-r-is{grid-row:3}.rm-r-to{grid-row:4}
+
+  .rm-step{
+    position:relative;
+    border-radius:10px;
+    padding:11px 12px;
+    font-size:13px;font-weight:700;line-height:1.35;
+    border:1px solid transparent;
+  }
+  .rm-was .rm-step,.rm-cell.rm-was-c .rm-step{background:var(--was-bg);border-color:#e1e6ee;color:#3f4a5c}
+  .rm-cell.rm-is-c .rm-step{background:var(--is-bg);border-color:#d5e1f4;color:#2f466b}
+  .rm-cell.rm-to-c .rm-step{background:#fff;border:1.5px solid #c3ccf7;color:#2b3ba8;
+                   box-shadow:0 4px 10px -8px rgba(59,86,214,.5)}
+
+  /* row-to-row flow arrows between adjacent step cells */
+  .rm-step.rm-arrow-r::after{
+    content:"";position:absolute;top:50%;right:-14px;transform:translateY(-50%);
+    width:0;height:0;
+    border-top:5px solid transparent;border-bottom:5px solid transparent;
+    border-left:8px solid currentColor;
+    z-index:3;
+  }
+  .rm-r-was .rm-step.rm-arrow-r::after{color:var(--was)}
+  .rm-r-is  .rm-step.rm-arrow-r::after{color:var(--is)}
+  .rm-r-to  .rm-step.rm-arrow-r::after{color:var(--agent)}
+
+  .rm-notes{list-style:none;display:flex;flex-direction:column;gap:5px;padding:0 3px}
+  .rm-notes li{
+    position:relative;padding-left:17px;
+    font-size:11.5px;line-height:1.4;color:var(--muted);
+  }
+  .rm-notes li::before{
+    content:"✓";position:absolute;left:0;top:0;
+    color:var(--check);font-weight:800;font-size:11px;
+  }
+
+  /* To-be AI agent grouped box */
+  .rm-agentbox{
+    grid-row:4;grid-column:3/6;
+    position:relative;
+    border:1.6px dashed var(--agent);
+    background:linear-gradient(180deg,#f6f8ff,#eef2ff);
+    border-radius:14px;
+    padding:16px 14px 14px;
+    display:grid;
+    grid-template-columns:1fr 16px 1fr 16px 1fr;
+    grid-template-rows:auto 16px auto;
+    box-shadow:0 10px 26px -16px rgba(59,86,214,.55);
+  }
+  .rm-chip{
+    border-radius:10px;
+    padding:12px 12px;
+    font-size:12.5px;font-weight:700;line-height:1.35;
+    border:1.5px solid transparent;
+    display:flex;align-items:center;
+    min-height:52px;
+  }
+  .rm-chip.rm-green{background:var(--green-bg);border-color:var(--green-bd);color:var(--green-tx)}
+  .rm-chip.rm-blue {background:var(--blue-bg);border-color:var(--blue-bd);color:var(--blue-tx)}
+
+  .rm-agentbox .rm-report-cell{
+    background:#fff;border:1.5px solid #c3ccf7;color:#2b3ba8;
+    border-radius:10px;padding:12px;
+    display:flex;align-items:center;justify-content:center;text-align:center;
+    font-size:13px;font-weight:700;line-height:1.35;
+    box-shadow:0 4px 10px -8px rgba(59,86,214,.5);
+  }
+
+  /* internal AI-agent step flow arrows */
+  .rm-aflow{display:flex;align-items:center;justify-content:center}
+  .rm-aflow::after{content:"";width:0;height:0}
+  .rm-aflow.rm-h::after{border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid var(--agent)}
+  .rm-aflow.rm-v::after{border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid var(--agent)}
+  .rm-aflow.rm-d::after{border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid var(--agent);transform:rotate(45deg)}
+
+  .rm-agent-tag{
+    position:absolute;top:-13px;right:14px;
+    background:var(--agent);color:#fff;
+    font-size:11.5px;font-weight:700;
+    padding:5px 12px;border-radius:999px;
+    box-shadow:0 6px 14px -6px rgba(59,86,214,.7);
+    white-space:nowrap;
+  }
+
+  /* To-be footer checklist */
+  .rm-to-foot{
+    grid-row:5;grid-column:2/6;
+    margin-top:2px;
+    background:linear-gradient(180deg,#f4f6ff,#eef1fd);
+    border:1px solid #d9dffb;
+    border-radius:13px;
+    padding:14px 20px;
+    display:grid;grid-template-columns:1fr 1fr;
+    column-gap:34px;row-gap:9px;
+  }
+  .rm-to-foot .rm-f{
+    position:relative;padding-left:24px;
+    font-size:12.5px;font-weight:600;line-height:1.4;color:#28325a;
+  }
+  .rm-to-foot .rm-f::before{
+    content:"✓";position:absolute;left:0;top:-1px;
+    width:16px;height:16px;border-radius:50%;
+    background:var(--agent);color:#fff;
+    font-size:10px;font-weight:800;
+    display:flex;align-items:center;justify-content:center;
+  }
+
+/* ===== embedded: deck ===== */
+
+  .emb-dk{
+    --ink:#1e2530;--muted:#5a6577;--faint:#8a93a5;
+    --green-bg:#daf3e7;--green-bd:#7fd3ae;--green-tx:#0d6e52;
+    --blue-bg:#dde8fc;--blue-bd:#9bbdf0;--blue-tx:#1b4bd6;
+    --orange-bg:#fdeee1;--orange-bd:#f0c39a;--orange-tx:#b25a1c;
+    --indigo:#3b56d6;--indigo-soft:#eef2ff;--indigo-bd:#c3ccf7;
+    --slate-bg:#f4f6f9;--slate-bd:#e1e6ee;--slate-tx:#3f4a5c;
+    --check:#12a07a;--page:#e9edf3;
+  }
+  
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .dk-kicker{font-size:12px;font-weight:700;color:var(--indigo);margin-bottom:2px}
+  .dk-stitle{font-size:22px;font-weight:800;letter-spacing:-.02em;margin-bottom:20px}
+  .dk-stitle small{font-size:13px;font-weight:600;color:var(--faint);margin-left:8px}
+
+  /* ---- shared atoms ---- */
+  .dk-badge{display:inline-flex;align-items:center;justify-content:center;
+    width:22px;height:22px;border-radius:50%;background:var(--indigo);color:#fff;
+    font-size:12px;font-weight:800;flex:none;box-shadow:0 3px 8px -3px rgba(59,86,214,.7)}
+  .dk-hbar{background:linear-gradient(180deg,#3a4762,#2c374d);color:#fff;border-radius:10px;
+    padding:11px 10px;text-align:center;font-size:14px;font-weight:700;
+    box-shadow:0 6px 14px -8px rgba(30,45,80,.5)}
+  .dk-box{background:#fff;border:1.4px solid var(--slate-bd);border-radius:10px;
+    padding:11px 12px;font-size:12.5px;font-weight:600;color:var(--slate-tx);
+    text-align:center;line-height:1.35;display:flex;align-items:center;justify-content:center}
+  .dk-box.dk-green{background:var(--green-bg);border-color:var(--green-bd);color:var(--green-tx);font-weight:700}
+  .dk-box.dk-blue{background:var(--blue-bg);border-color:var(--blue-bd);color:var(--blue-tx);font-weight:700}
+  .dk-box.dk-ind{background:#fff;border:1.5px solid var(--indigo-bd);color:#2b3ba8;font-weight:700;
+    box-shadow:0 4px 10px -8px rgba(59,86,214,.5)}
+  .dk-box.dk-dash{background:var(--indigo-soft);border:1.6px dashed var(--indigo);color:#2b3ba8;font-weight:700}
+  .dk-sec{border:1.6px solid var(--indigo-bd);border-radius:14px;padding:14px 14px 14px;
+    background:linear-gradient(180deg,#fbfcff,#f5f7ff);position:relative}
+  .dk-sec-h{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .dk-sec-h b{font-size:14px;font-weight:800;color:#2b3ba8}
+  .dk-sec-h .dk-org{margin-left:auto;font-size:11px;font-weight:600;color:var(--faint)}
+  .dk-note{font-size:11px;font-style:italic;font-weight:600;color:var(--indigo);opacity:.8}
+  .dk-cap{font-size:10.5px;color:var(--faint);text-align:center;line-height:1.3}
+
+  .dk-flow{display:flex;align-items:center;gap:0}
+  .dk-flow>.dk-box,.dk-flow>.dk-hbar{flex:1}
+  .dk-arw{flex:none;width:26px;position:relative}
+  .dk-arw::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:0;height:0;border-top:6px solid transparent;border-bottom:6px solid transparent;
+    border-left:9px solid #a7b1c6}
+  .dk-arw-d{height:20px;position:relative}
+  .dk-arw-d::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;
+    border-top:9px solid #a7b1c6}
+
+  .dk-db{position:relative;margin-top:10px;padding:14px 12px 10px;border:1.5px solid var(--indigo-bd);
+    border-top:none;background:linear-gradient(180deg,#eef2ff,#e3e9ff);border-radius:0 0 14px 14px;
+    text-align:center;font-size:12px;font-weight:700;color:#2b3ba8}
+  .dk-db::before{content:"";position:absolute;top:-9px;left:-1.5px;right:-1.5px;height:16px;
+    border:1.5px solid var(--indigo-bd);border-radius:50%;background:#eef2ff}
+
+  .dk-grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .dk-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+  .dk-grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+
+  /* ===== Slide 1 (P-Mix Simulation Agent) specifics ===== */
+  .dk-chatrow{display:flex;justify-content:center;gap:0;align-items:center;margin-bottom:14px}
+  .dk-chatrow .dk-box{flex:none;min-width:150px}
+
+  /* ===== Slide 2 (Data value chain) matrix ===== */
+  .dk-dmx{display:grid;grid-template-columns:26px 1fr 1fr 1fr 22px 1fr 1fr 26px;gap:7px}
+  .dk-dmx .dk-vl{writing-mode:vertical-rl;display:flex;align-items:center;justify-content:center;
+    background:#eef2f7;border:1px solid #dbe2ec;border-radius:8px;font-size:12px;font-weight:700;
+    color:#3f4a5c;letter-spacing:.12em}
+  .dk-dmx .dk-hd{border-radius:8px;padding:8px;text-align:center;font-size:12.5px;font-weight:700}
+  .dk-dmx .dk-hd.dk-a{background:#e5ecf6;color:#37527a}
+  .dk-dmx .dk-hd.dk-b{background:#e5ecf6;color:#37527a}
+  .dk-dmx .dk-hd.dk-c{background:var(--green-bg);color:var(--green-tx)}
+  .dk-dmx .dk-cell{background:#f6f8fb;border:1px solid #e4e9f1;border-radius:8px;padding:9px 6px;
+    text-align:center;font-size:11.5px;font-weight:600;color:#41506a;line-height:1.3;
+    display:flex;align-items:center;justify-content:center}
+  .dk-dmx .dk-cell.dk-prof{background:#e9f7f0;border-color:#bfe6d3;color:#0f6e52;font-weight:700}
+  .dk-dmx .dk-cell.dk-inc{background:#eaf1fb;border-color:#cadcf5;color:#1e4796;font-weight:700}
+  .dk-dmx .dk-ar{grid-row:2/6;display:flex;align-items:center;justify-content:center;color:#8aa0c6;font-size:18px;font-weight:800}
+
+  /* ===== Slide 3 (GaiA architecture) ===== */
+  .dk-arch{display:flex;gap:12px;align-items:stretch}
+  .dk-hcp{flex:none;width:40px;border:1.5px solid #d5dbe6;border-radius:12px;background:#f3f5f9;
+    display:flex;align-items:center;justify-content:center}
+  .dk-hcp span{writing-mode:vertical-rl;font-size:14px;font-weight:800;color:#54617a;letter-spacing:.15em}
+  .dk-panel{border:1.5px solid var(--indigo-bd);border-radius:14px;padding:13px 13px 14px;
+    background:linear-gradient(180deg,#f7f9ff,#eef2fd);position:relative;display:flex;flex-direction:column;gap:10px}
+  .dk-panel.dk-orange{border-color:var(--orange-bd);background:linear-gradient(180deg,#fef8f2,#fdefe3)}
+  .dk-panel.dk-plain{background:#fff}
+  .dk-p-h{display:flex;align-items:center;gap:8px}
+  .dk-p-h b{font-size:14px;font-weight:800;color:#2b3ba8}
+  .dk-panel.dk-orange .dk-p-h b{color:var(--orange-tx)}
+  .dk-p-h .dk-rt{margin-left:auto;font-size:10.5px;font-weight:700;color:var(--faint)}
+  .dk-sub{border:1.2px solid #dfe4ef;border-radius:10px;padding:9px 9px;background:#fff}
+  .dk-sub-t{font-size:11.5px;font-weight:800;margin-bottom:7px;display:flex;align-items:center;gap:6px}
+  .dk-sub-t.dk-red{color:#c0492b}
+  .dk-mini{background:#f5f7fb;border:1px solid #e2e8f1;border-radius:7px;padding:7px 5px;
+    text-align:center;font-size:11px;font-weight:600;color:#43506a;line-height:1.25}
+  .dk-mini.dk-g{background:var(--green-bg);border-color:var(--green-bd);color:var(--green-tx);font-weight:700}
+
+  /* vertical flow arrow (line + head) between sections */
+  .dk-vflow{height:30px;position:relative;margin:0 auto}
+  .dk-vflow::before{content:"";position:absolute;left:50%;top:0;height:21px;width:2px;background:#9fb0cf;transform:translateX(-50%)}
+  .dk-vflow::after{content:"";position:absolute;left:50%;top:19px;transform:translateX(-50%);
+    width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:10px solid #9fb0cf}
+  /* inter-panel connector (slide 3) */
+  .dk-conn{flex:none;width:66px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px}
+  .dk-conn .dk-lbl{font-size:9.5px;font-weight:700;color:var(--faint);text-align:center;line-height:1.2}
+  .dk-conn .dk-ln{width:100%;height:0;border-top:2px solid #9fb0cf;position:relative}
+  .dk-conn .dk-ln.dk-dash{border-top-style:dashed;border-color:var(--indigo)}
+  .dk-conn .dk-ln::after{content:"";position:absolute;right:-1px;top:-6px;
+    width:0;height:0;border-top:6px solid transparent;border-bottom:6px solid transparent;border-left:9px solid #9fb0cf}
+  .dk-conn .dk-ln.dk-dash::after{border-left-color:var(--indigo)}
+
+
+/* fallback palette for embedded diagrams */
+:root{
+  --head-a:#313d54;
+  --head-b:#44547320;
+  --was:#8b95a7;
+  --was-bg:#f4f6f9;
+  --was-lbl:#e4e8ef;
+  --is:#4a6da0;
+  --is-bg:#eef3fb;
+  --is-lbl:#dbe6f6;
+  --to:#3b56d6;
+  --to-bg:#f3f5ff;
+  --green-bg:#daf3e7;
+  --green-bd:#7fd3ae;
+  --green-tx:#0d6e52;
+  --blue-bg:#dde8fc;
+  --blue-bd:#9bbdf0;
+  --blue-tx:#1b4bd6;
+  --agent:#3b56d6;
+  --check:#12a07a;
+  --faint:#8a93a5;
+  --orange-bg:#fdeee1;
+  --orange-bd:#f0c39a;
+  --orange-tx:#b25a1c;
+  --indigo:#3b56d6;
+  --indigo-soft:#eef2ff;
+  --indigo-bd:#c3ccf7;
+  --slate-bg:#f4f6f9;
+  --slate-bd:#e1e6ee;
+  --slate-tx:#3f4a5c;
+}
+
+/* number badges: guarantee contrast */
+.card .num,.lyr .lab .n,.fitem .fn,.ecard .ic,.dk-badge{
+  background-color:#3B56D6!important;color:#fff!important;
+}
+.rm-to-foot .rm-f::before{background-color:#3B56D6!important;color:#fff!important}
+.rm-agent-tag{background-color:#3B56D6!important;color:#fff!important}
+.emb-dk svg .num{fill:#fff!important}
+</style>
+</head>
+<body>
+<div id="stage"><div id="deck">
+
+<!-- 1 -->
+<section class="slide cover on" data-ch="" data-title="표지">
+  <div class="eyebrow">AI Agent 활용 사례 공유</div>
+  <h1>SKHy G-SCM<br>P-Mix 수익성 Simulation Agent 구축</h1>
+  <div class="rule"></div>
+  <div class="lede">
+    추론은 LLM이, 계산은 기존 시스템 로직이 담당하도록 나눈 도메인 특화 Agent 구축 사례입니다.
+  </div>
+  <div class="meta">
+    <span>발표자 : 김경삼</span>
+    <span>2026. 09. 09</span>
+    <span>AX Solution Service Team 2</span>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="slide" data-ch="Intro" data-title="P-Mix 수익성 Agent 소개">
+  <div class="head">
+    <div class="chapter">Introduction</div>
+    <h1>P-Mix 수익성 Simulation Agent</h1>
+  </div>
+  <div class="body">
+    <div class="intro">
+      <div class="introlede">
+        자연어 질의로 P-Mix 수익성을 분석하고, 변수 조정에 따른 수익성 변화를
+        <em>즉시 정확하게 계산</em>하며 인사이트를 제공하는 <em>도메인 특화 Agent</em>입니다.
+      </div>
+      <div class="pill3">
+        <div class="pill">
+          <div class="t">자연어 분석</div>
+          <p>메뉴·조회 조건 조작 없이, 묻는 방식 그대로 수익성 지표를 조회하고 비교합니다.</p>
+        </div>
+        <div class="pill">
+          <div class="t">정확한 Simulation</div>
+          <p>변수를 조정하면 기존 시스템과 동일한 로직으로 수익성 변화를 즉시 계산합니다.</p>
+        </div>
+        <div class="pill">
+          <div class="t">인사이트 제공</div>
+          <p>집계 결과에 도메인 맥락을 결합해 특이사항과 해석을 함께 제시합니다.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="slide" data-ch="Agenda" data-title="오늘 이야기할 것">
+  <div class="head">
+    <div class="chapter">Agenda</div>
+    <h1>오늘 이야기할 것</h1>
+    <div class="sub">기간계 시스템 위에 Agent를 올리며 <b>무엇을 어떻게 나누었는지</b>, 그리고 그 과정에서 얻은 것을 중심으로 말씀드립니다.</div>
+  </div>
+  <div class="body">
+    <div class="agenda">
+      <div class="arow">
+        <div class="ch">Ch 1</div>
+        <div class="tt">과제 배경과 요구사항<span>어떤 업무였고, Agent에 무엇을 요구했나</span></div>
+      </div>
+      <div class="arow">
+        <div class="ch">Ch 2</div>
+        <div class="tt">구현 — 추론과 연산의 분리<span>기능 레이어, 설계 구조, 구현 특징, 상세 아키텍처</span></div>
+      </div>
+      <div class="arow">
+        <div class="ch">Ch 3</div>
+        <div class="tt">도입 효과와 Lesson Learned<span>무엇이 달라졌고, 다음에 무엇을 다르게 할 것인가</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="slide" data-ch="Ch 1. 배경" data-title="과제 목표">
+  <div class="head">
+    <div class="chapter">Ch 1. 과제 목표</div>
+    <h1>업무 체계를 Agent 기반으로 한 단계 더</h1>
+    <div class="sub">Rolling Plan 기준 P-Mix 타당성·장당 수익 분석 업무체계에 AI Agent를 도입해 <b>지능형 SCM 의사결정 체계</b>를 구축합니다.</div>
+  </div>
+  <div class="body">
+    <div class="embed"><div class="in emb-rm" id="emb-roadmap">
+<div class="rm-matrix">
+
+      <!-- ===== Header phases ===== -->
+      <div class="rm-phase rm-p1">Data 취합</div>
+      <div class="rm-phase rm-p2">Data 분석</div>
+      <div class="rm-phase rm-p3">P-Mix Simulation</div>
+      <div class="rm-phase rm-p4 rm-last">리포트 작성</div>
+
+      <!-- ===== As-was ===== -->
+      <div class="rm-stage rm-was">
+        <span class="rm-n">As-was</span>
+        <span class="rm-s">Manual 기반</span>
+      </div>
+
+      <div class="rm-cell rm-was rm-r-was" style="grid-column:2/3">
+        <div class="rm-step rm-arrow-r">수익성 기준정보<br>Excel 파일 취합</div>
+        <ul class="rm-notes">
+          <li>복수의 UI에서 수작업 Data 취합</li>
+          <li>Validation Rule은 암묵지로, 담당자 노하우 의존</li>
+        </ul>
+      </div>
+
+      <div class="rm-cell rm-was rm-r-was" style="grid-column:3/4">
+        <div class="rm-step rm-arrow-r">Excel 수익성 결과 분석</div>
+        <ul class="rm-notes">
+          <li>분석 Point는 담당자 경험에 의존하며, 분석 이력 관리 어려움</li>
+        </ul>
+      </div>
+
+      <div class="rm-cell rm-was rm-r-was" style="grid-column:4/5">
+        <div class="rm-step rm-arrow-r">Excel P-Mix Simulation</div>
+      </div>
+
+      <div class="rm-cell rm-was rm-r-was" style="grid-column:5/6">
+        <div class="rm-step">P-Mix 점검 Report 작성</div>
+      </div>
+
+      <!-- ===== As-is ===== -->
+      <div class="rm-stage rm-is">
+        <span class="rm-n">As-is</span>
+        <span class="rm-s">System 기반 (’25~)</span>
+      </div>
+
+      <div class="rm-cell rm-is-c rm-r-is" style="grid-column:2/3">
+        <div class="rm-step rm-arrow-r">수익성 기준정보<div></div>시스템 IF</div>
+        <ul class="rm-notes">
+          <li>수익성 단일 UI에 Data 자동 수집</li>
+          <li>Validation 시스템화</li>
+        </ul>
+      </div>
+
+      <div class="rm-cell rm-is-c rm-r-is" style="grid-column:3/4">
+        <div class="rm-step rm-arrow-r">시스템 기반 수익성 결과 분석</div>
+        <ul class="rm-notes">
+          <li>이력 관리, 과거 버전과의 비교 분석 용이</li>
+          <li>분석 Point 도출은 여전히 담당자 해석 의존</li>
+          <li>다양한 Table 자료 직접 참조 및 변경 多</li>
+        </ul>
+      </div>
+
+      <div class="rm-cell rm-is-c rm-r-is" style="grid-column:4/5">
+        <div class="rm-step rm-arrow-r">시스템 기반 P-Mix Simulation</div>
+      </div>
+
+      <div class="rm-cell rm-is-c rm-r-is" style="grid-column:5/6">
+        <div class="rm-step">P-Mix 점검 Report 작성</div>
+        <ul class="rm-notes">
+          <li>Report 작성은 Manual 위주로 진행되어, 수치 변경/오류 발생시 수정 작업 Load 多</li>
+        </ul>
+      </div>
+
+      <!-- ===== To-be ===== -->
+      <div class="rm-stage rm-to">
+        <span class="rm-n">To-be</span>
+        <span class="rm-s">AI Agent 기반<br>(’26~ Agent 도입)</span>
+      </div>
+
+      <div class="rm-cell rm-to-c rm-r-to" style="grid-column:2/3">
+        <div class="rm-step rm-arrow-r">수익성 기준정보 시스템 자동 IF</div>
+      </div>
+
+      <!-- grouped AI agent scope -->
+      <div class="rm-agentbox">
+        <span class="rm-agent-tag">수익성 Simulation Agent 적용 범위</span>
+        <div class="rm-chip rm-green" style="grid-column:1;grid-row:1">수익성 분석 / Simulation 표현</div>
+        <span class="rm-aflow rm-h" style="grid-column:2;grid-row:1"></span>
+        <div class="rm-chip rm-green" style="grid-column:3;grid-row:1">AI Agent 기반 P-Mix Simulation</div>
+        <span class="rm-aflow rm-h" style="grid-column:4;grid-row:1"></span>
+
+        <span class="rm-aflow rm-v" style="grid-column:1;grid-row:2"></span>
+        <span class="rm-aflow rm-d" style="grid-column:2;grid-row:2"></span>
+
+        <div class="rm-chip rm-blue" style="grid-column:1;grid-row:3">AI Agent 기반 수익성 결과 분석</div>
+        <span class="rm-aflow rm-h" style="grid-column:2;grid-row:3"></span>
+        <div class="rm-chip rm-blue" style="grid-column:3;grid-row:3">AI Agent 기반 Case안 생성</div>
+
+        <div class="rm-report-cell" style="grid-column:5;grid-row:1/4">P-Mix 점검 Report 초안 생성</div>
+      </div>
+
+      <!-- To-be benefits -->
+      <div class="rm-to-foot">
+        <div class="rm-f">담당자의 결정에 따라 신속하게 분석 수행</div>
+        <div class="rm-f">다각적 Data 분석 및 P-Mix Simulation 지원</div>
+        <div class="rm-f">담당자 설정 제약 기반 최적 Case 제안</div>
+        <div class="rm-f">사용자 맞춤 Template 기반 Report 초안 자동 생성</div>
+      </div>
+
+    </div>
+    </div></div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="slide" data-ch="Ch 1. 배경" data-title="도메인 이해">
+  <div class="head">
+    <div class="chapter">Ch 1. 도메인 이해</div>
+    <h1>P-Mix 수익성은 이렇게 만들어집니다</h1>
+    <div class="sub">Agent가 대체하려는 대상은 <b>Step 2 ~ Step 3</b>입니다. 이미 시스템화되어 있는 영역을, Agent 기반으로 한 번 더 고도화하는 시도입니다.</div>
+  </div>
+  <div class="body">
+    <div class="embed"><div class="in emb-dk" id="emb-dk2">
+
+  <div class="chain" style="display:flex;flex-direction:column">
+
+    <!-- 1. 수집 -->
+    <div class="dk-sec">
+      <div class="dk-sec-h"><span class="dk-badge">1</span><b>DATA 수집</b><span class="dk-org">유관 조직 : 마케팅, 원가 관리</span></div>
+      <div class="dk-flow">
+        <div class="dk-box">2월 판매 계획</div><div class="dk-arw"></div>
+        <div class="dk-box">생산/판매 확정</div><div class="dk-arw"></div>
+        <div class="dk-box">비용 계획</div><div class="dk-arw"></div>
+        <div class="dk-box dk-ind">원가 계획 (ERP)</div><div class="dk-arw"></div>
+        <div class="dk-box">손익 산출</div>
+      </div>
+    </div>
+
+    <div class="dk-vflow"></div>
+
+    <!-- 2. 통합/정제 -->
+    <div class="dk-sec">
+      <div class="dk-sec-h"><span class="dk-badge">2</span><b>DATA 통합/정제</b><span class="dk-org">유관 조직 : 영업, SCM 전략기획</span></div>
+      <div class="dk-dmx">
+        <div class="dk-hd dk-a" style="grid-area:1/2/2/3">3월 판매 계획</div>
+        <div class="dk-hd dk-b" style="grid-area:1/3/2/5">2월 원가</div>
+        <div class="dk-hd dk-c" style="grid-area:1/6/2/8">수익성</div>
+        <div class="dk-vl" style="grid-area:2/1/6/2">AMT 매출액</div>
+        <div class="dk-ar" style="grid-area:2/5/6/6">➜</div>
+        <div class="dk-vl" style="grid-area:2/8/6/9">연간 수익성</div>
+
+        <!-- EQ -->
+        <div class="dk-cell" style="grid-area:2/2">EQ 환산</div>
+        <div class="dk-cell" style="grid-area:2/3">Gb/GB당 원가 (EQ)</div>
+        <div class="dk-cell" style="grid-area:2/4">현금 원가</div>
+        <div class="dk-cell dk-inc" style="grid-area:2/6">현금이익</div>
+        <div class="dk-cell dk-prof" style="grid-area:2/7">Gb/GB당 수익성(EQ)</div>
+        <!-- DIE -->
+        <div class="dk-cell" style="grid-area:3/2">DIE 환산</div>
+        <div class="dk-cell" style="grid-area:3/3">DIE당 원가</div>
+        <div class="dk-cell" style="grid-area:3/4">매출 원가</div>
+        <div class="dk-cell dk-inc" style="grid-area:3/6">매출이익</div>
+        <div class="dk-cell dk-prof" style="grid-area:3/7">DIE당 수익성</div>
+        <!-- 제품 -->
+        <div class="dk-cell" style="grid-area:4/2">제품 환산</div>
+        <div class="dk-cell" style="grid-area:4/3">제품당 원가</div>
+        <div class="dk-cell" style="grid-area:4/4">영업 원가</div>
+        <div class="dk-cell dk-inc" style="grid-area:4/6">영업이익</div>
+        <div class="dk-cell dk-prof" style="grid-area:4/7">제품당 수익성</div>
+        <!-- Wafer (제품 환산 아래) -->
+        <div class="dk-cell" style="grid-area:5/2">Wafer 환산</div>
+        <div class="dk-cell" style="grid-area:5/3">Wafer 장당 원가</div>
+        <div class="dk-cell" style="grid-area:5/4">변동 원가</div>
+        <div class="dk-cell dk-inc" style="grid-area:5/6">공헌이익</div>
+        <div class="dk-cell dk-prof" style="grid-area:5/7">Wafer 장당 수익성</div>
+      </div>
+    </div>
+
+    <div class="dk-vflow"></div>
+
+    <!-- 3. 분석/검증 -->
+    <div class="dk-sec">
+      <div class="dk-sec-h"><span class="dk-badge">3</span><b>DATA 분석/검증</b><span class="dk-org">유관 조직 : 영업</span></div>
+      <div class="dk-flow">
+        <div class="dk-box">수익성 분석</div><div class="dk-arw"></div>
+        <div class="dk-box">타당성 검증<br><span style="font-weight:500;color:var(--faint)">(Mix 효과)</span></div><div class="dk-arw"></div>
+        <div class="dk-box">결과 분석<br><span style="font-weight:500;color:var(--faint)">(기회 수익, 비용 분석)</span></div><div class="dk-arw"></div>
+        <div class="dk-box dk-ind">분석 Report</div>
+      </div>
+    </div>
+
+    <div class="dk-vflow"></div>
+
+    <!-- 4. 활용 -->
+    <div class="dk-sec">
+      <div class="dk-sec-h"><span class="dk-badge">4</span><b>DATA 활용</b><span class="dk-org">유관 조직 : 마케팅, RP기획</span></div>
+      <div class="dk-grid2" style="max-width:560px">
+        <div class="dk-box">차월 판매 Guide</div>
+        <div class="dk-box">차월 Mix 생산 Guide 참고</div>
+      </div>
+    </div>
+  </div>
+
+    </div></div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="slide" data-ch="Ch 1. 배경" data-title="과제 배경">
+  <div class="head">
+    <div class="chapter">Ch 1. 과제 배경</div>
+    <h1>제품이 늘고 시장이 흔들릴수록, 판단은 더 빨라져야 했습니다</h1>
+    <div class="sub">
+      P-Mix 타당성 점검과 매출·기회비용 검토 요구가 늘면서,
+      <b>P-Mix 변화가 수익성에 미치는 영향을 신속히 검토하고 공유할 분석 체계</b>가 필요했습니다.
+    </div>
+  </div>
+  <div class="body">
+    <div class="grid g3 tall">
+      <div class="card">
+        <div class="num">1</div>
+        <h3>유례없는 포트폴리오 확대</h3>
+        <p>AI 시대에 맞춘 고객 맞춤형 대응으로 제품 포트폴리오가 유례없이 확대되고, 시장 환경도 급변하고 있습니다.</p>
+        <div class="callout">검토해야 할 P-Mix 경우의 수 자체가 이전과 비교할 수 없이 늘었습니다.</div>
+      </div>
+      <div class="card">
+        <div class="num">2</div>
+        <h3>담당자 경험에 얹힌 판단</h3>
+        <p>Validation Rule과 분석 Point가 암묵지 형태로 존재. 담당자가 바뀌면 지식이 함께 사라질 위험.</p>
+        <div class="callout">시스템화 이후에도 다량의 Table 지표를 직접 탐색해야 했습니다.</div>
+      </div>
+      <div class="card">
+        <div class="num">3</div>
+        <h3>Manual Report 이상의 해석</h3>
+        <p>Manual화된 Report 이상의 특이사항과 인사이트 추출은 <b>암묵지 영역</b>으로, 담당자 역량에 크게 좌우됩니다.</p>
+        <div class="callout">수치가 바뀌면 Report를 처음부터 다시 작성해야 하는 부담도 남아 있었습니다.</div>
+      </div>
+    </div>
+    <div class="note">데이터 수집(Step 1)은 ’25년 시스템 구축으로 이미 자동화됐지만, <b>해석과 판단은 여전히 사람의 몫</b>으로 남아 있었습니다.</div>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="slide" data-ch="Ch 1. 요구사항" data-title="Agent 주요 요구사항">
+  <div class="head">
+    <div class="chapter">Ch 1. 요구사항</div>
+    <h1>Agent에 요구된 세 가지</h1>
+    <div class="sub">이 세 가지가 이후 모든 설계 판단의 기준이 되었습니다.</div>
+  </div>
+  <div class="body">
+    <div class="grid g3 tall">
+      <div class="card" style="background:var(--paper)">
+        <div class="num">1</div>
+        <h3>시스템과 숫자가 같아야 한다</h3>
+        <p>AI가 기존 G-SCM의 계산 로직을 <b>그대로</b> 사용해, 화면에서 조회한 값과 동일한 결과를 보여줄 것.</p>
+        <div class="callout">수익성 숫자는 보고에 그대로 쓰입니다. LLM이 값을 “생성”하면 그 순간 쓸 수 없는 도구가 됩니다.</div>
+      </div>
+      <div class="card" style="background:var(--paper)">
+        <div class="num">2</div>
+        <h3>자연어를 파라미터로</h3>
+        <p>사용자 질의를 파라미터화하여, 원하는 수익성 지표 조회와 Simulation을 동적으로 수행할 것.</p>
+        <div class="callout">“고정 질문 몇 개에 답하는 챗봇”이 아니라, 조회 조건을 자유롭게 조합할 수 있어야 합니다.</div>
+      </div>
+      <div class="card" style="background:var(--paper)">
+        <div class="num">3</div>
+        <h3>숫자 너머의 해석</h3>
+        <p>집계·Simulation 결과를 LLM이 분석해 의미 있는 특이사항과 추가 인사이트를 제공할 것.</p>
+        <div class="callout">가장 어려웠던 요구사항입니다. 이유는 Lesson Learned에서 말씀드리겠습니다.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="slide" data-ch="Ch 2. 구현" data-title="Agent 정의와 기능 레이어">
+  <div class="head">
+    <div class="chapter">Ch 2. 구현</div>
+    <h1>Agent 주요 기능 레이어</h1>
+    <div class="sub">사용자 질의는 Orchestrator를 거쳐 기능 Layer로 라우팅되고, 각 Layer는 자신의 역할만 수행합니다.</div>
+  </div>
+  <div class="body">
+    <div class="lyrs">
+      <div class="lyr">
+        <div class="lab"><div class="n">1</div><div class="nm">Orchestrator</div></div>
+        <div class="dsc">
+          <div class="d1">사용자의 자연어 요청을 정규화하고, 적절한 기능 Layer로 라우팅하며 flow를 제어함</div>
+          <div class="d2"><b>주요 기능</b> : 요청 해석 및 구조화, Flow 라우팅, 필수 파라미터 체크, 결과 값 출력</div>
+        </div>
+      </div>
+      <div class="lyr">
+        <div class="lab"><div class="n">2</div><div class="nm">Validation</div></div>
+        <div class="dsc">
+          <div class="d1">수익성 Plan Ver Data의 이상치를 식별하고 누락치 조정 결과를 해석함</div>
+          <div class="d2"><b>주요 기능</b> : 누락치 요약, 누락치 입력 프로시저 Call</div>
+        </div>
+      </div>
+      <div class="lyr">
+        <div class="lab"><div class="n">3</div><div class="nm">Analysis</div></div>
+        <div class="dsc">
+          <div class="d1">수익성 Plan Ver Data의 다각적 분석을 수행하기 위해 Data를 연산하고 요약함</div>
+          <div class="d2"><b>주요 기능</b> : 월별 트렌드 분석, Mix 분석, Ver간 비교 분석, 원인 분석</div>
+        </div>
+      </div>
+      <div class="lyr">
+        <div class="lab"><div class="n">4</div><div class="nm">Simulation</div></div>
+        <div class="dsc">
+          <div class="d1">사용자가 수익성 Data의 변수를 조정하여 기준 Plan Ver 대비 수익성 변화를 산출함</div>
+          <div class="d2"><b>주요 기능</b> : QTY(Mix) Simulation, ASP Simulation, 수율 Simulation</div>
+        </div>
+      </div>
+      <div class="lyr ph2">
+        <div class="lab"><div class="n">5</div><div class="nm">Case 생성</div></div>
+        <div class="dsc">
+          <div class="d1">담당자가 설정한 제약 조건 하에서 최적의 P-Mix Case를 탐색해 제안함 <span style="font-size:12px;color:var(--ink3);font-weight:600">· Phase 2</span></div>
+          <div class="d2"><b>주요 기능</b> : 제약 조건 정의, 후보 Case 생성 및 평가, 최적안 추천</div>
+        </div>
+      </div>
+      <div class="lyr">
+        <div class="lab"><div class="n">6</div><div class="nm">Data Retrieval</div></div>
+        <div class="dsc">
+          <div class="d1">각 기능 Layer가 필요로 하는 데이터를 표준화된 방식으로 조회해 전달함</div>
+          <div class="d2"><b>주요 기능</b> : Ontology 참조, 수익성 Data IF, 프로시저 Call</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="slide" data-ch="Ch 2. 구현" data-title="설계상 구조도">
+  <div class="head">
+    <div class="chapter">Ch 2. 구현</div>
+    <h1>설계상 구조도</h1>
+    <div class="sub">Chat UI로 들어온 질의는 Orchestrator가 해석해 기능 Layer로 분배하고, Data Retrieval이 Vector DB·G-SCM DB에서 근거를 가져옵니다.</div>
+  </div>
+  <div class="body">
+    <div class="embed"><div class="in emb-dk" id="emb-dk1">
+
+  <div class="dk-chatrow">
+    <div class="dk-box" style="min-width:120px">User</div>
+    <div class="dk-arw"></div>
+    <div class="dk-box dk-ind" style="min-width:150px">Chat UI</div>
+  </div>
+  <div class="dk-arw-d" style="max-width:340px;margin:0 auto 12px"></div>
+
+  <div class="dk-sec" style="max-width:760px;margin:0 auto">
+    <div class="dk-sec-h"><b>P-Mix 수익성 Simulation Agent</b></div>
+
+    <!-- Orchestrator -->
+    <div class="dk-sec" style="background:#fff;border-color:#cfe0cf;margin-bottom:12px">
+      <div class="dk-sec-h"><span class="dk-badge">1</span><b style="color:#2f7d4f">Orchestrator</b></div>
+      <div class="dk-grid4">
+        <div class="dk-box">Intent 식별</div>
+        <div class="dk-box">Routing</div>
+        <div class="dk-box">Planning</div>
+        <div class="dk-box">결과 취합</div>
+      </div>
+    </div>
+
+    <!-- functional modules -->
+    <div class="dk-grid4" style="margin-bottom:12px">
+      <div class="dk-sec" style="background:#fff;border-color:#cfe0cf;padding:10px">
+        <div class="dk-sec-h" style="margin-bottom:8px"><span class="dk-badge">2</span><b style="font-size:13px">Validation</b></div>
+      </div>
+      <div class="dk-sec" style="background:#fff;border-color:#cfe0cf;padding:10px">
+        <div class="dk-sec-h" style="margin-bottom:8px"><span class="dk-badge">3</span><b style="font-size:13px">Analysis</b></div>
+      </div>
+      <div class="dk-sec" style="background:#fff;border-color:#cfe0cf;padding:10px">
+        <div class="dk-sec-h" style="margin-bottom:8px"><span class="dk-badge">4</span><b style="font-size:13px">Simulation</b></div>
+      </div>
+      <div class="dk-sec" style="border-style:dashed;background:var(--indigo-soft);padding:10px">
+        <div class="dk-sec-h" style="margin-bottom:8px"><span class="dk-badge">5</span><b style="font-size:13px">Case 생성</b></div>
+      </div>
+    </div>
+
+    <!-- Data retrieval -->
+    <div class="dk-sec" style="background:#fff;border-color:#cfe0cf">
+      <div class="dk-sec-h"><span class="dk-badge">6</span><b style="color:#2f7d4f">Data Retrieval</b></div>
+      <div class="dk-grid3">
+        <div class="dk-box">Ontology 참조</div>
+        <div class="dk-box">수익성 Data IF</div>
+        <div class="dk-box">프로시저 Call</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:center;gap:120px;max-width:760px;margin:0 auto">
+    <div class="dk-arw-d"></div><div class="dk-arw-d"></div>
+  </div>
+  <div style="display:flex;justify-content:center;gap:60px;max-width:520px;margin:4px auto 0">
+    <div class="dk-db" style="width:170px">Vector DB</div>
+    <div class="dk-db" style="width:170px">G-SCM DB</div>
+  </div>
+
+    </div></div>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="slide" data-ch="Ch 2. 구현" data-title="구현 특징 (1) 판단 계층">
+  <div class="head">
+    <div class="chapter">Ch 2. 구현 특징 &nbsp;(1/2)</div>
+    <h1>Agent 구현 특징 — 판단은 어떻게 만들어지는가</h1>
+    <div class="sub">추론은 Agent Layer가 하고, 집계 및 계산은 AI가 개입되지 않는 <b>순수 MCP Layer</b>가 수행합니다.</div>
+  </div>
+  <div class="body">
+    <div class="feat">
+      <div class="fitem">
+        <div class="fn">1</div>
+        <div>
+          <div class="ft"><em>Semantic Layer</em> — LLM의 판단 기준을 코드 밖으로</div>
+          <div class="fd">사용자 질의 분석, 파라미터 맵핑, 호출 도구 선택 등 <b>LLM의 모든 판단</b>에 Semantic Layer를 개입시킵니다.</div>
+          <div class="fh"><b>구현 방법</b> &nbsp;Orchestrator와 Sub Agent의 각 prompt에 Semantic Layer를 스크립트 파일(.d2 확장자)로 주입</div>
+        </div>
+      </div>
+      <div class="fitem">
+        <div class="fn">2</div>
+        <div>
+          <div class="ft"><em>ReAct Pattern</em> — Reasoning + Act</div>
+          <div class="fd">사용자 질의가 들어오면 지정된 횟수(10회)로 Loop를 돌며 답변이 완성됐는지 체크하고, LLM에 Binding된 Tool을 호출합니다.</div>
+          <div class="fh"><b>구현 방법</b> &nbsp;GaiA의 LangGraph 버전이 ReAct 패턴(Deep Agent, create agent)을 지원하지 않아, 유사한 동작을 Code Level에서 직접 구현</div>
+        </div>
+      </div>
+      <div class="fitem">
+        <div class="fn">3</div>
+        <div>
+          <div class="ft"><em>기능별 Tool Binding</em> — 동적 도구 선택</div>
+          <div class="fd">LLM은 Prompt 및 Binding된 도구의 설명을 참조하여 상황에 맞게 동적으로 Tool을 선택합니다.</div>
+          <div class="fh"><b>구현 방법</b> &nbsp;최상위 Orchestrator에 Binding된 도구 목록(Tool 15개, Sub Agent 2개)으로 구성. 정상 사용이 완료된 Tool은 1회 Loop 내 재호출되지 않음</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 11 -->
+<section class="slide" data-ch="Ch 2. 구현" data-title="구현 특징 (2) 연산 계층">
+  <div class="head">
+    <div class="chapter">Ch 2. 구현 특징 &nbsp;(2/2)</div>
+    <h1>Agent 구현 특징 — 계산과 문맥은 어떻게 지키는가</h1>
+    <div class="sub">Agent와 MCP가 주고받는 <b>표준 객체 인자</b>를 먼저 합의하고, 계산은 전적으로 MCP Layer에 맡깁니다.</div>
+  </div>
+  <div class="body">
+    <div class="feat">
+      <div class="fitem">
+        <div class="fn">4</div>
+        <div>
+          <div class="ft"><em>집계 처리 엔진</em> — AI가 개입하지 않는 계산</div>
+          <div class="fd">GaiA(Agent Layer)와 집계 처리 엔진(MCP Layer) 간 사전에 합의된 Parameter Payload(Dimension, Measure)를 이용하여 Wafer 장당, DIE당, EQ, 제품, 연간 등 다양한 수익성 지표를 산출합니다.</div>
+          <div class="fh"><b>구현 방법</b> &nbsp;기존 장당 수익성 화면의 조회 조건·Dataset·SQL을 FastAPI의 MCP 서버 Python 소스로 Conversion하여 통합 구축</div>
+        </div>
+      </div>
+      <div class="fitem">
+        <div class="fn">5</div>
+        <div>
+          <div class="ft"><em>Parameter Mapping</em> — Agent와 MCP의 공용어</div>
+          <div class="fd">Analysis·Simulation의 세부 동작에 필요한 Parameter를 <b>집계축(Dimension)</b>과 <b>계산값(Measure)</b> 두 가지로 구조화하여, Agent와 MCP 통신을 위한 표준 객체 인자로 활용합니다.</div>
+          <div class="fh"><b>구현 방법</b> &nbsp;제품 속성은 Dimension, 수익성 지표는 Measure로 두고 G-SCM 실제 Table 및 UI 변수와 정확히 같은 이름을 Default로 설정 · 항목별 상세 Description을 Semantic Layer와 Tool마다 기입 · Aggregation과 Simulation의 API 파라미터로 JSON 객체 사용</div>
+        </div>
+      </div>
+      <div class="fitem">
+        <div class="fn">6</div>
+        <div>
+          <div class="ft"><em>Context Retention</em> — 대화가 이어지게 만들기</div>
+          <div class="fd">이전 대화의 문맥을 저장한 후 응답 생성에 참고하는 <b>Multi Turn 대화</b>가 가능합니다.</div>
+          <div class="fh"><b>구현 방법</b> &nbsp;Multi Turn 질의가 들어오면 이전 대화 기록을 JSON 형태로 불러와 프롬프트에 주입. GaiA Framework가 Default 외 확장 State를 저장하지 않아 별도 Tmp 파일로 저장</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 12 -->
+<section class="slide" data-ch="Ch 2. 구현" data-title="상세 아키텍처">
+  <div class="head">
+    <div class="chapter">Ch 2. 구현</div>
+    <h1>상세 아키텍처</h1>
+    <div class="sub">GaiA P-Mix Agent(추론)와 G-SCM MCP Tools(집계·연산)를 분리하고, 두 계층은 합의된 파라미터로만 통신합니다.</div>
+  </div>
+  <div class="body">
+    <div class="embed"><div class="in emb-dk" id="emb-dk3">
+
+  <div style="width:100%;overflow-x:auto">
+  <svg viewBox="0 0 990 440" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:760px;height:auto;display:block;font-family:Pretendard,system-ui,sans-serif">
+    <defs>
+      <marker id="ah" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#8aa0c6"/></marker>
+      <marker id="ahi" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#3b56d6"/></marker>
+      <marker id="ahs" markerWidth="8" markerHeight="8" refX="5.5" refY="2.6" orient="auto"><path d="M0,0 L6,2.6 L0,5.2 Z" fill="#5a6577"/></marker>
+      <style>
+        .emb-dk svg text{fill:#222b38;font-size:9px}
+        .emb-dk svg .mid{text-anchor:middle}
+        .emb-dk svg .b{font-weight:700}
+        .emb-dk svg .s8{font-size:8px}
+        .emb-dk svg .ttl{font-size:10.5px;font-weight:800}
+        .emb-dk svg .num{font-size:9px;font-weight:800;fill:#fff}
+        .emb-dk svg .it{font-size:9px;font-style:italic;font-weight:700;fill:#3b56d6}
+        .emb-dk svg .mt{font-size:9.5px;font-weight:800;fill:#b2591f}
+        .emb-dk svg .lb{font-size:7.5px;fill:#7a8296}
+        .emb-dk svg .gt{font-weight:700;fill:#0d6e52}
+      </style>
+    </defs>
+
+    <!-- HCP -->
+    <rect x="8" y="14" rx="8" width="52" height="414" fill="#eef1f6" stroke="#c9d2e0"/>
+    <text class="ttl mid" transform="rotate(-90 34 221)" x="34" y="221" style="fill:#54617a;font-size:13px">HCP</text>
+
+    <!-- main frame -->
+    <rect x="70" y="14" rx="10" width="740" height="414" fill="#ffffff" stroke="#dde3ee"/>
+
+    <!-- top: chat + llm -->
+    <rect x="110" y="18" rx="5" width="104" height="30" fill="#fff" stroke="#c3ccf7"/>
+    <text class="s b mid" x="162" y="31" style="fill:#2b3ba8">GaiA Chat</text>
+    <text class="s8 mid" x="162" y="42" style="fill:#2b3ba8">(Chat UI)</text>
+    <text class="s b mid" x="374" y="28">LLM</text>
+    <text class="s mid" x="374" y="41">gaia-GLM-5.2</text>
+
+    <!-- ===== panels ===== -->
+    <rect x="78" y="54" rx="10" width="388" height="372" fill="#eaf1fb" stroke="#bcd0ec"/>
+    <text class="ttl mid" x="250" y="70">GaiA P-Mix Agent</text>
+    <text class="it" x="452" y="70" text-anchor="end">Ontology</text>
+
+    <rect x="486" y="70" rx="10" width="324" height="302" fill="#fdeede" stroke="#f0cfa8"/>
+    <text class="ttl mid" x="650" y="66" style="fill:#b2591f">G-SCM MCP Tools</text>
+
+    <rect x="820" y="268" rx="10" width="155" height="118" fill="#f6f8fb" stroke="#d5dbe6"/>
+    <text class="ttl mid" x="905" y="284" style="fill:#54617a">Legacy</text>
+
+    <!-- ===== connectors ===== -->
+    <!-- prompting (bidirectional) -->
+    <line x1="156" y1="49" x2="156" y2="85" stroke="#3b56d6" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#ahi)"/>
+    <line x1="168" y1="85" x2="168" y2="49" stroke="#3b56d6" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#ahi)"/>
+    <text class="lb" x="176" y="60" style="fill:#3b56d6">Prompting</text>
+    <!-- orchestrator <-> agent tools (bidirectional) -->
+    <line x1="115" y1="196" x2="115" y2="261" stroke="#8aa0c6" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ah)"/>
+    <line x1="129" y1="261" x2="129" y2="196" stroke="#8aa0c6" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ah)"/>
+    <text class="lb" x="135" y="230">Tool 호출 결과</text>
+    <!-- agent tools -> MCP : MCP Tool Calling (request, rightward) -->
+    <line x1="304" y1="280" x2="488" y2="280" stroke="#8aa0c6" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ah)"/>
+    <text class="lb" x="340" y="275">MCP Tool Calling</text>
+    <!-- MCP -> agent tools : 집계 Data / 처리 결과 (response, leftward) -->
+    <line x1="486" y1="294" x2="304" y2="294" stroke="#8aa0c6" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ah)"/>
+    <text class="lb" x="340" y="290">집계 Data / 처리 결과</text>
+    <!-- Memory 관리 -> redis (사용자별 Data 적재) -->
+    <polyline points="520,270 520,318 433,318" fill="none" stroke="#8aa0c6" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ah)"/>
+    <text class="lb" x="527" y="300">사용자별 Data 적재</text>
+    <!-- redis -> Memory 관리 (필요 데이터 Load) -->
+    <polyline points="432,346 572,346 572,270" fill="none" stroke="#8aa0c6" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ah)"/>
+    <text class="lb" x="452" y="360">필요 데이터 Load (Analysis, Simulation)</text>
+    <!-- MCP -> legacy (SQL Execution, rightward into DB) -->
+    <polyline points="804,232 818,232 818,322 828,322" fill="none" stroke="#8aa0c6" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ah)"/>
+    <text class="lb mid" x="822" y="255">SQL Execution</text>
+
+
+    <!-- ===== Orchestrator ===== -->
+    <rect x="96" y="88" rx="6" width="208" height="108" fill="#fff" stroke="#c7d0e0"/>
+    <text class="s b mid" x="200" y="101">Orchestrator</text>
+    <rect x="102" y="106" rx="4" width="58" height="30" fill="#f5f7fb" stroke="#d3dbe8"/>
+    <text class="s8 mid" x="131" y="118">분석 및</text><text class="s8 mid" x="131" y="129">응답 생성</text>
+    <rect x="168" y="106" rx="4" width="58" height="30" fill="#f5f7fb" stroke="#d3dbe8"/>
+    <text class="s8 mid" x="197" y="118">응답 보완</text><text class="s8 mid" x="197" y="129">필요 판단</text>
+    <rect x="234" y="106" rx="4" width="62" height="30" fill="#f5f7fb" stroke="#d3dbe8"/>
+    <text class="s8 mid" x="265" y="118">최종 응답</text><text class="s8 mid" x="265" y="129">생성</text>
+    <line x1="160" y1="121" x2="168" y2="121" stroke="#5a6577" stroke-width="1.2" marker-end="url(#ahs)"/>
+    <line x1="226" y1="121" x2="234" y2="121" stroke="#5a6577" stroke-width="1.2" marker-end="url(#ahs)"/>
+    <line x1="200" y1="137" x2="204" y2="158" stroke="#5a6577" stroke-width="1.2" marker-end="url(#ahs)"/>
+    <line x1="131" y1="159" x2="131" y2="137" stroke="#5a6577" stroke-width="1.2" marker-end="url(#ahs)"/>
+    <text class="lb mid" x="166" y="151">최대 10회 Loop</text>
+    <rect x="102" y="160" rx="4" width="58" height="30" fill="#f5f7fb" stroke="#d3dbe8"/>
+    <text class="s8 mid" x="131" y="172">Binding</text><text class="s8 mid" x="131" y="183">Tool 호출</text>
+    <rect x="176" y="160" rx="4" width="58" height="30" fill="#f5f7fb" stroke="#d3dbe8"/>
+    <text class="s8 mid" x="205" y="172">파라미터</text><text class="s8 mid" x="205" y="183">변환</text>
+    <line x1="176" y1="175" x2="162" y2="175" stroke="#5a6577" stroke-width="1.2" marker-end="url(#ahs)"/>
+    <text class="it" x="262" y="170">ReAct Pattern</text>
+
+    <!-- ===== LLM 판단 근거 ===== -->
+    <rect x="312" y="88" rx="6" width="150" height="90" fill="#fff" stroke="#c7d0e0"/>
+    <text class="s b mid" x="387" y="101">LLM 판단 근거</text>
+    <rect x="318" y="108" rx="4" width="68" height="26" fill="#f5f7fb" stroke="#d3dbe8"/>
+    <text class="s8 mid" x="352" y="124">Chat History</text>
+    <rect x="390" y="108" rx="4" width="68" height="26" fill="#f5f7fb" stroke="#d3dbe8"/>
+    <text class="s8 mid" x="424" y="120">Semantic</text><text class="s8 mid" x="424" y="131">Layer</text>
+    <rect x="318" y="140" rx="4" width="68" height="26" fill="#f5f7fb" stroke="#d3dbe8"/>
+    <text class="s8 mid" x="352" y="156">Prompt</text>
+    <rect x="390" y="140" rx="4" width="68" height="26" fill="#f5f7fb" stroke="#d3dbe8"/>
+    <text class="s8 mid" x="424" y="152">Pseudo</text><text class="s8 mid" x="424" y="163">Code</text>
+    <text class="it mid" x="387" y="191">Context Retention</text>
+    <text class="it mid" x="387" y="203">Parameter Mapping</text>
+
+    <!-- ===== Agent Tools ===== -->
+    <text class="it" x="112" y="255">Tool Binding</text>
+    <rect x="96" y="262" rx="6" width="208" height="96" fill="#fff" stroke="#c7d0e0"/>
+    <text class="s b mid" x="150" y="275">Agent Tools</text>
+    <rect x="102" y="280" rx="4" width="60" height="28" fill="#f5f7fb" stroke="#d3dbe8"/>
+    <text class="s8 mid" x="132" y="291">필요 데이터</text><text class="s8 mid" x="132" y="302">Load</text>
+    <rect x="168" y="280" rx="4" width="58" height="28" fill="#daf3e7" stroke="#7fd3ae"/>
+    <text class="s8 gt mid" x="197" y="297">Validation</text>
+    <rect x="232" y="280" rx="4" width="64" height="28" fill="#daf3e7" stroke="#7fd3ae"/>
+    <text class="s8 gt mid" x="264" y="297">분석 Report</text>
+    <rect x="102" y="314" rx="4" width="60" height="28" fill="#f5f7fb" stroke="#d3dbe8"/>
+    <text class="s8 mid" x="132" y="331">Analysis</text>
+    <rect x="168" y="314" rx="4" width="58" height="28" fill="#f5f7fb" stroke="#d3dbe8"/>
+    <text class="s8 mid" x="197" y="331">Simulation</text>
+
+    <!-- ===== Redis cylinder ===== -->
+    <path d="M360 308 V360 A35 7 0 0 0 430 360 V308" fill="#eef2ff" stroke="#b9c4f2"/>
+    <ellipse cx="395" cy="308" rx="35" ry="7" fill="#f2f5ff" stroke="#b9c4f2"/>
+    <text class="s8 b mid" x="395" y="326" style="fill:#2b3ba8">Redis</text>
+    <text class="s8 b mid" x="395" y="338" style="fill:#2b3ba8">Memory</text>
+    <text class="s8 b mid" x="395" y="350" style="fill:#2b3ba8">Storage</text>
+
+    <!-- ===== MCP sub-panels ===== -->
+    <rect x="496" y="80" rx="6" width="150" height="94" fill="#fff" stroke="#efd3b6"/>
+    <text class="mt mid" x="571" y="93">집계 처리 엔진</text>
+    <rect x="502" y="100" rx="4" width="68" height="26" fill="#f8f5f2" stroke="#e7d6c6"/><text class="s8 mid" x="536" y="116">Pivot</text>
+    <rect x="574" y="100" rx="4" width="68" height="26" fill="#f8f5f2" stroke="#e7d6c6"/><text class="s8 mid" x="608" y="116">가중 평균</text>
+    <rect x="502" y="132" rx="4" width="68" height="26" fill="#f8f5f2" stroke="#e7d6c6"/><text class="s8 mid" x="536" y="148">Roll-Up</text>
+    <rect x="574" y="132" rx="4" width="68" height="26" fill="#f8f5f2" stroke="#e7d6c6"/><text class="s8 mid" x="608" y="148">Simulation</text>
+
+    <rect x="652" y="80" rx="6" width="152" height="94" fill="#fff" stroke="#efd3b6"/>
+    <text class="mt mid" x="728" y="93">동적 그리드 생성</text>
+    <rect x="658" y="104" rx="4" width="66" height="52" fill="#f8f5f2" stroke="#e7d6c6"/>
+    <text class="s8 mid" x="691" y="127">HTML</text><text class="s8 mid" x="691" y="138">Render</text>
+    <rect x="728" y="104" rx="4" width="70" height="52" fill="#f8f5f2" stroke="#e7d6c6"/><text class="s8 mid" x="763" y="133">Ag-Grid</text>
+
+    <rect x="496" y="182" rx="6" width="150" height="88" fill="#fff" stroke="#efd3b6"/>
+    <text class="s b mid" x="571" y="195">Memory 관리</text>
+    <rect x="502" y="202" rx="4" width="68" height="56" fill="#f8f5f2" stroke="#e7d6c6"/>
+    <text class="s8 mid" x="536" y="227">메모리</text><text class="s8 mid" x="536" y="238">관리</text>
+    <rect x="574" y="202" rx="4" width="68" height="56" fill="#f8f5f2" stroke="#e7d6c6"/>
+    <text class="s8 mid" x="608" y="227">Simulation</text><text class="s8 mid" x="608" y="238">이력 저장</text>
+
+    <rect x="652" y="182" rx="6" width="152" height="88" fill="#fff" stroke="#efd3b6"/>
+    <text class="s b mid" x="728" y="195">DB 관리</text>
+    <rect x="658" y="202" rx="4" width="66" height="56" fill="#f8f5f2" stroke="#e7d6c6"/><text class="s8 mid" x="691" y="233">SQL 실행</text>
+    <rect x="728" y="202" rx="4" width="70" height="56" fill="#f8f5f2" stroke="#e7d6c6"/>
+    <text class="s8 mid" x="763" y="227">프로시저</text><text class="s8 mid" x="763" y="238">호출</text>
+
+    <!-- ===== Legacy ===== -->
+    <path d="M828 306 V366 A36 7 0 0 0 900 366 V306" fill="#eef2ff" stroke="#b9c4f2"/>
+    <ellipse cx="864" cy="306" rx="36" ry="7" fill="#f2f5ff" stroke="#b9c4f2"/>
+    <text class="s8 b mid" x="864" y="332" style="fill:#2b3ba8">G-SCM DB</text>
+    <text class="s8 b mid" x="864" y="344" style="fill:#2b3ba8">(Oracle)</text>
+    <rect x="906" y="300" rx="4" width="64" height="78" fill="#fff" stroke="#cfd8e6"/>
+    <text class="s8 b mid" x="938" y="313">Table</text>
+    <line x1="906" y1="318" x2="970" y2="318" stroke="#e2e7f0"/>
+    <text class="s8 mid" x="938" y="333" style="fill:#c0492b">장당수익성</text>
+    <text class="s8 mid" x="938" y="350" style="fill:#c0492b">리버전</text>
+    <text class="s8 mid" x="938" y="367" style="fill:#c0492b">환율</text>
+
+    <!-- number badges (drawn last, always on top) -->
+    <circle cx="116" cy="64" r="8" fill="#3b56d6"/><text class="num mid" x="116" y="67">1</text>
+    <circle cx="92" cy="97" r="8" fill="#3b56d6"/><text class="num mid" x="92" y="100">2</text>
+    <circle cx="92" cy="253" r="8" fill="#3b56d6"/><text class="num mid" x="92" y="256">3</text>
+    <circle cx="498" cy="62" r="8" fill="#3b56d6"/><text class="num mid" x="498" y="65">4</text>
+    <circle cx="432" cy="304" r="8" fill="#3b56d6"/><text class="num mid" x="432" y="307">5</text>
+    <circle cx="830" cy="300" r="8" fill="#3b56d6"/><text class="num mid" x="830" y="303">5</text>
+  </svg>
+  </div>
+
+    </div></div>
+  </div>
+</section>
+
+<!-- 13 -->
+<section class="slide" data-ch="Ch 2. 구현" data-title="기술 스택">
+  <div class="head">
+    <div class="chapter">Ch 2. 구현</div>
+    <h1>주요 라이브러리 &amp; 프레임워크</h1>
+    <div class="sub">사내 표준(HCP · GaiA) 위에서, Python 생태계의 표준 도구들로 구성했습니다.</div>
+  </div>
+  <div class="body">
+    <div class="stack">
+      <div class="srow"><div class="nm">HCP</div><div class="ds">SKHy Hybrid Cloud Platform의 Util 라이브러리. 본 프로젝트에서는 <em>Logger · Config</em> 기능 사용</div></div>
+      <div class="srow"><div class="nm">gaia-agent-manager</div><div class="ds">LangChain · LangGraph 기반으로 GaiA가 제공하는 <em>HCP AI Agent Workflow 프레임워크</em></div></div>
+      <div class="srow"><div class="nm">FastAPI</div><div class="ds">고성능 Python 웹 프레임워크. RESTful API 구축에 사용하며 <em>HCP의 Python Backend 표준</em>. MCP 서버가 이 위에서 동작</div></div>
+      <div class="srow"><div class="nm">Gradio Chat</div><div class="ds">대화형 웹 UI 컴포넌트. GaiA가 로컬 Chat 환경을 제공하지 않아 <em>테스트 목적</em>으로 사용</div></div>
+      <div class="srow"><div class="nm">pandas</div><div class="ds">DataFrame 구조로 데이터 정제 · 변환 · 집계 수행</div></div>
+      <div class="srow"><div class="nm">tabulate</div><div class="ds">Python 자료구조와 DataFrame을 표 형태로 출력. <em>완전히 고정된 Output Format</em>(분석 Report 생성)에 사용</div></div>
+      <div class="srow"><div class="nm">aiosqlite</div><div class="ds">SQL Mapper 기능 담당. Java 진영의 <em>iBatis/MyBatis를 대체</em>하는 목적</div></div>
+      <div class="srow"><div class="nm">httpx</div><div class="ds">동기·비동기를 모두 지원하는 HTTP 클라이언트. FastAPI와 함께 서버 간 API 통신에 사용</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 14 -->
+<section class="slide" data-ch="Ch 3. 효과" data-title="도입 효과">
+  <div class="head">
+    <div class="chapter">Ch 3. 도입 효과</div>
+    <h1>무엇이 달라졌나</h1>
+    <div class="sub">배경에서 짚은 문제 — 확대되는 검토 대상, 암묵지 의존, Manual Report — 에 각각 대응됩니다.</div>
+  </div>
+  <div class="body">
+    <div class="eff">
+      <div class="ecard">
+        <div class="top"><div class="ic">1</div><h3>조회에서 인사이트까지 한 번에</h3></div>
+        <p>메뉴 진입 → 화면 선택 → 조회 조건 설정 → 결과 확인의 과정이, 단일 Chat 화면의 자연어 질의 한 번으로 축소. 조회 결과와 해석을 함께 제공.</p>
+        <div class="ba"><span class="b">4단계 화면 조작</span><span class="ar">→</span><span class="a">질의 1회</span></div>
+      </div>
+      <div class="ecard">
+        <div class="top"><div class="ic">2</div><h3>Simulation 조건 입력 방식의 전환</h3></div>
+        <p>UI Grid에서 값을 하나씩 수정하거나 Excel Upload로 일괄 수정하던 과정을, 원하는 제품·속성·변동폭을 <b>자연어로 지정</b>하는 방식으로 대체.</p>
+        <div class="ba"><span class="b">Grid 수정 / Excel Upload</span><span class="ar">→</span><span class="a">자연어 조건 지정</span></div>
+      </div>
+      <div class="ecard">
+        <div class="top"><div class="ic">3</div><h3>프론트 개발 부담 감소</h3></div>
+        <p>별도 화면을 구성하지 않고 데이터만 생성하면 동적으로 그리드를 만들 수 있어, 신규 분석 요건에 대한 개발 시간 단축.</p>
+        <div class="ba"><span class="b">화면 단위 개발</span><span class="ar">→</span><span class="a">동적 그리드 생성</span></div>
+      </div>
+      <div class="ecard">
+        <div class="top"><div class="ic">4</div><h3>암묵지의 자산화</h3></div>
+        <p>담당자 경험과 지식에 의존하던 Validation Rule과 분석 Point를 시스템과 Semantic Layer로 옮겨, <b>지식 손실 가능성</b>을 줄임.</p>
+        <div class="ba"><span class="b">담당자 노하우</span><span class="ar">→</span><span class="a">버전 관리되는 정의</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 15 -->
+<section class="slide" data-ch="Ch 3. 정리" data-title="Lesson Learned">
+  <div class="head">
+    <div class="chapter">Ch 3. Lesson Learned</div>
+    <h1>배운 것</h1>
+    <div class="sub">OLAP 성격의 대용량 기간계 시스템에 AI를 붙이면서 얻은, 다음 과제에 그대로 쓸 수 있는 것들입니다.</div>
+  </div>
+  <div class="body">
+    <div class="less">
+      <div class="lcard"><div class="n">1</div><div class="tx"><b>Context 최적화가 곧 품질</b><br>Semantic Layer · 상세 프롬프트 · 채팅 히스토리 · 전체 Dataset을 다 넣으면 조회 시간과 Context 크기 제약에 부딪힙니다.</div></div>
+      <div class="lcard"><div class="n">2</div><div class="tx"><b>추론과 연산은 반드시 분리</b><br>판단은 LLM·Agent가, 비즈니스 로직 계산은 MCP(API)가. 이 경계를 지켰기 때문에 “시스템과 같은 숫자”가 성립했습니다.</div></div>
+      <div class="lcard"><div class="n">3</div><div class="tx"><b>단순 수치 해석은 인사이트가 아니다</b><br>최대·최소·증가 추이 수준의 러프한 해석은 현업에게 의미 있게 다가가지 않습니다. 도메인 맥락이 결합되어야 합니다.</div></div>
+      <div class="lcard"><div class="n">4</div><div class="tx"><b>구조화 경험 자체가 자산</b><br>Agent에 주입하기 위해 데이터와 비즈니스 로직을 구조화한 경험은 다른 도메인에도 그대로 적용됩니다.</div></div>
+      <div class="lcard"><div class="n">5</div><div class="tx"><b>속도와 완성도는 Context가 가른다</b><br>같은 모델, 같은 Tool이라도 Context 관리 수준에 따라 답변 품질 차이가 매우 큽니다.</div></div>
+      <div class="lcard"><div class="n">6</div><div class="tx"><b>OLAP 시스템에서의 AI 도입 방식</b><br>대용량 집계 시스템에 AI를 어떤 형태로 붙일지 고민하고 실제로 검증해 볼 수 있었습니다.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 16 -->
+<section class="slide closing" data-ch="" data-title="마무리">
+  <h1>결국 한 문장으로</h1>
+  <div class="rule"></div>
+  <p>
+    <b>AI에게 판단을 맡기고 계산은 맡기지 않는 것</b>,
+    그리고 <b>업무 지식을 프롬프트가 아니라 관리 가능한 계층으로 분리하는 것</b>.
+    이 두 가지가 기간계 시스템 위에서 Agent를 성립시킨 조건이었습니다.
+  </p>
+  <p style="margin-top:24px;color:var(--ink3);font-size:15px">질문 환영합니다.</p>
+</section>
+
+<div id="bar"></div>
+</div></div>
+<div id="ov"><div id="ovg"></div></div>
+<div id="help">← → 이동 &nbsp;·&nbsp; O 전체보기 &nbsp;·&nbsp; F 전체화면 &nbsp;·&nbsp; Ctrl+P PDF 저장</div>
+<script>
+(function(){
+  var slides=[].slice.call(document.querySelectorAll('.slide'));
+  var deck=document.getElementById('deck'),bar=document.getElementById('bar');
+  var ov=document.getElementById('ov'),ovg=document.getElementById('ovg');
+  var i=0;
+  slides.forEach(function(s,n){
+    if(!s.classList.contains('cover')){
+      var p=document.createElement('div');p.className='pageno';
+      p.textContent=(n+1)+' / '+slides.length;s.appendChild(p);
+    }
+    var t=document.createElement('div');t.className='thumb';
+    t.innerHTML='<div class="tc">'+(s.dataset.ch||'')+'</div><div class="tt">'+(s.dataset.title||'')+'</div><div class="tn">'+(n+1)+'</div>';
+    t.onclick=function(){go(n);toggleOv(false);};ovg.appendChild(t);
+  });
+  function fit(){
+    var s=Math.min(window.innerWidth/1280,window.innerHeight/720);
+    deck.style.transform='scale('+s+')';
+  }
+  /* scale embedded diagrams to fit their slide body */
+  function fitEmbeds(){
+    [].forEach.call(document.querySelectorAll('.embed>.in'),function(el){
+      var box=el.parentElement;
+      el.style.transform='none';
+      var w=el.scrollWidth,h=el.scrollHeight;
+      var bw=box.clientWidth,bh=box.clientHeight;
+      if(!w||!h||!bw||!bh)return;
+      var s=Math.min(bw/w,bh/h,1.35);
+      el.style.width=w+'px';
+      el.style.transform='scale('+s+')';
+    });
+  }
+  function go(n){
+    if(n<0||n>=slides.length)return;
+    slides[i].classList.remove('on');i=n;slides[i].classList.add('on');
+    bar.style.width=((i+1)/slides.length*100)+'%';
+    [].forEach.call(ovg.children,function(c,k){c.classList.toggle('cur',k===i);});
+    location.hash=i+1;
+    requestAnimationFrame(fitEmbeds);
+  }
+  function toggleOv(f){ov.classList.toggle('on',f===undefined?!ov.classList.contains('on'):f);}
+  document.addEventListener('keydown',function(e){
+    var k=e.key;
+    if(k==='ArrowRight'||k==='PageDown'||k===' '){e.preventDefault();go(i+1);}
+    else if(k==='ArrowLeft'||k==='PageUp'){e.preventDefault();go(i-1);}
+    else if(k==='Home'){go(0);}else if(k==='End'){go(slides.length-1);}
+    else if(k==='o'||k==='O'){toggleOv();}
+    else if(k==='Escape'){toggleOv(false);}
+    else if(k==='f'||k==='F'){
+      if(document.fullscreenElement)document.exitFullscreen();
+      else document.documentElement.requestFullscreen();
+    }
+  });
+  deck.addEventListener('click',function(e){
+    if(e.clientX>window.innerWidth*0.62)go(i+1);
+    else if(e.clientX<window.innerWidth*0.38)go(i-1);
+  });
+  var hp=document.getElementById('help'),tm;
+  function poke(){hp.classList.remove('hide');clearTimeout(tm);tm=setTimeout(function(){hp.classList.add('hide');},3500);}
+  document.addEventListener('mousemove',poke);document.addEventListener('keydown',poke);poke();
+  window.addEventListener('resize',function(){fit();fitEmbeds();});
+  fit();
+  var h=parseInt(location.hash.replace('#',''),10);
+  go(h>0&&h<=slides.length?h-1:0);
+  window.addEventListener('load',fitEmbeds);
+  setTimeout(fitEmbeds,300);
+})();
+</script>
+</body>
+</html>
