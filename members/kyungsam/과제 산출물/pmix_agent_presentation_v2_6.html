@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SKHy G-SCM P-Mix 수익성 Simulation Agent 구축</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root{
+  --ink:#111820; --ink2:#3D4A5C; --ink3:#77849A;
+  --paper:#FFFFFF; --wash:#F4F6FA; --wash2:#E9EDF3; --line:#DDE3EC;
+  --accent:#3B56D6; --accent2:#5468E6;
+  --agent:#3B56D6; --agent-bg:#EEF2FF; --agent-line:#C3CCF7;
+  --mcp:#B25A1C; --mcp-bg:#FDEEDE; --mcp-line:#F0CFA8;
+  --green:#0D6E52; --green-bg:#DAF3E7; --green-line:#7FD3AE;
+  --font:"Pretendard","Pretendard Variable",-apple-system,BlinkMacSystemFont,"Malgun Gothic",sans-serif;
+  --mono:"JetBrains Mono","SFMono-Regular",Consolas,"D2Coding",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--font);background:#20262F;color:var(--ink);overflow:hidden;-webkit-font-smoothing:antialiased}
+#stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+#deck{width:1280px;height:720px;position:relative;transform-origin:center center}
+.slide{position:absolute;inset:0;background:var(--paper);padding:40px 54px 50px;display:none;flex-direction:column}
+.slide.on{display:flex}
+.slide::before{content:"";position:absolute;left:0;top:0;height:5px;width:100%;
+  background:linear-gradient(90deg,#8b95a7 0%,#4a6da0 42%,#3b56d6 100%)}
+
+.chapter{font-size:12.5px;letter-spacing:.02em;color:var(--accent);font-weight:800;margin-bottom:6px}
+h1{font-size:29px;font-weight:800;letter-spacing:-.02em;line-height:1.25}
+.sub{font-size:14.5px;color:var(--ink2);margin-top:8px;line-height:1.6;font-weight:500}
+.sub b{color:var(--ink);font-weight:700}
+.head{border-bottom:1px solid var(--line);padding-bottom:13px;margin-bottom:18px;flex:none}
+.body{flex:1;min-height:0;display:flex;flex-direction:column;gap:14px;justify-content:center}
+.pageno{position:absolute;right:24px;bottom:18px;font-size:11.5px;color:var(--ink3);font-variant-numeric:tabular-nums}
+#bar{position:absolute;left:0;bottom:0;height:3px;background:var(--accent);transition:width .22s ease}
+
+.grid{display:grid;gap:13px}
+.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}
+.card{background:var(--wash);border:1px solid var(--line);border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:7px}
+.card h3{font-size:16px;font-weight:800;line-height:1.35}
+.card p{font-size:13.6px;color:var(--ink2);line-height:1.62}
+.grid.tall .card{min-height:206px;padding:19px 21px}
+.card .num{width:23px;height:23px;border-radius:7px;background:var(--agent);color:#fff;font-size:12.5px;font-weight:800;display:grid;place-items:center;flex:none}
+.note{font-size:12.5px;color:var(--ink3);line-height:1.6;padding-left:14px;position:relative}
+.note::before{content:"·";position:absolute;left:3px;top:-1px;font-weight:800}
+.note b{color:var(--ink2)}
+.callout{border-left:3px solid var(--accent);background:#fff;border-radius:0 8px 8px 0;padding:11px 14px;font-size:12.5px;line-height:1.6;color:var(--ink2)}
+.kw{color:var(--accent);font-weight:700}
+
+/* cover */
+.cover{justify-content:center;padding:0 76px}
+.cover .eyebrow{font-size:14.5px;color:var(--ink3);font-weight:700;margin-bottom:18px}
+.cover h1{font-size:50px;line-height:1.22;letter-spacing:-.03em}
+.cover .rule{width:64px;height:4px;background:var(--accent);margin:28px 0 24px;border-radius:2px}
+.cover .lede{font-size:17px;color:var(--ink2);line-height:1.7;max-width:780px;font-weight:500}
+.cover .meta{margin-top:42px;font-size:14px;color:var(--ink3);display:flex;gap:26px}
+
+/* intro (2P) */
+.intro{display:flex;flex-direction:column;gap:20px;justify-content:center;flex:1}
+.introlede{font-size:22px;line-height:1.6;font-weight:700;letter-spacing:-.02em}
+.introlede em{font-style:normal;color:var(--accent)}
+.pill3{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+.pill{border:1px solid var(--agent-line);background:var(--agent-bg);border-radius:11px;padding:17px 19px}
+.pill .t{font-size:15px;font-weight:800;color:var(--agent);margin-bottom:6px}
+.pill p{font-size:13.4px;color:var(--ink2);line-height:1.6}
+
+/* agenda */
+.agenda{display:flex;flex-direction:column;flex:1;justify-content:center}
+.arow{display:grid;grid-template-columns:70px 1fr;align-items:center;gap:22px;padding:22px 4px;border-bottom:1px solid var(--line)}
+.arow:last-child{border-bottom:none}
+.arow .ch{font-size:13px;font-weight:800;color:var(--accent);letter-spacing:.04em}
+.arow .tt{font-size:21px;font-weight:700}
+.arow .tt span{display:block;font-size:13.5px;font-weight:500;color:var(--ink3);margin-top:5px}
+
+/* embed wrapper */
+.embed{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.embed>.in{transform-origin:center center}
+
+/* layer list (8P) */
+.lyrs{display:flex;flex-direction:column;gap:9px;flex:1;justify-content:center}
+.lyr{display:grid;grid-template-columns:150px 1fr;gap:14px;align-items:stretch}
+.lyr .lab{display:flex;align-items:center;gap:10px;border-radius:9px;padding:11px 13px;
+  border:1.4px solid var(--green-line);background:var(--green-bg)}
+.lyr.ph2 .lab{border-color:var(--agent-line);background:var(--agent-bg);border-style:dashed}
+.lyr .lab .n{width:23px;height:23px;border-radius:50%;background:var(--agent);color:#fff;
+  font-size:12px;font-weight:800;display:grid;place-items:center;flex:none}
+.lyr .lab .nm{font-size:14.5px;font-weight:800;color:var(--green)}
+.lyr.ph2 .lab .nm{color:var(--agent)}
+.lyr .dsc{border:1px solid var(--line);border-radius:9px;padding:11px 15px;background:var(--paper);
+  display:flex;flex-direction:column;justify-content:center;gap:4px}
+.lyr .dsc .d1{font-size:13.8px;font-weight:700;line-height:1.45}
+.lyr .dsc .d2{font-size:12.4px;color:var(--ink3);line-height:1.5}
+.lyr .dsc .d2 b{color:var(--ink2);font-weight:700}
+
+/* ---- 구현 특징 (10P/11P) ---- */
+.feat{display:flex;flex-direction:column;gap:12px;flex:1;justify-content:center}
+.fitem{display:grid;grid-template-columns:38px 1fr;gap:14px;
+  border:1px solid var(--line);border-radius:11px;padding:15px 18px;background:var(--paper)}
+.fitem .fn{width:28px;height:28px;border-radius:8px;background:var(--agent);color:#fff;
+  font-size:13px;font-weight:800;display:grid;place-items:center;margin-top:2px}
+.fitem .ft{font-size:16px;font-weight:800;margin-bottom:5px}
+.fitem .ft em{font-style:normal;color:var(--agent)}
+.fitem .fd{font-size:13.4px;color:var(--ink2);line-height:1.6}
+.fitem .fh{margin-top:8px;background:var(--wash);border-left:3px solid var(--agent-line);
+  border-radius:0 8px 8px 0;padding:9px 13px;font-size:12.6px;line-height:1.6;color:var(--ink2)}
+.fitem .fh b{color:var(--agent);font-weight:800}
+.banner{background:linear-gradient(180deg,#f6f8ff,#eef2ff);border:1.4px solid var(--agent-line);
+  border-radius:11px;padding:13px 18px;font-size:14.4px;font-weight:700;color:#28325a;line-height:1.5}
+.banner em{font-style:normal;color:var(--agent)}
+
+/* ---- 기술 스택 ---- */
+.stack{display:flex;flex-direction:column}
+.srow{display:grid;grid-template-columns:180px 1fr;gap:20px;padding:13px 6px;border-bottom:1px solid var(--line);align-items:baseline}
+.srow:last-child{border-bottom:none}
+.srow .nm{font-family:var(--mono);font-size:13.4px;font-weight:700}
+.srow .ds{font-size:13px;color:var(--ink2);line-height:1.55}
+.srow .ds em{font-style:normal;color:var(--accent);font-weight:700}
+
+/* ---- 효과 ---- */
+.eff{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.ecard{border:1px solid var(--line);border-radius:10px;padding:17px 19px;display:flex;flex-direction:column;gap:8px;min-height:168px}
+.ecard .top{display:flex;align-items:center;gap:9px}
+.ecard .ic{width:24px;height:24px;border-radius:7px;background:var(--agent);color:#fff;font-size:12px;font-weight:800;display:grid;place-items:center;flex:none}
+.ecard h3{font-size:15.5px;font-weight:800;line-height:1.3}
+.ecard p{font-size:13.1px;color:var(--ink2);line-height:1.6}
+.ba{display:flex;align-items:center;gap:8px;font-size:12px;margin-top:2px}
+.ba .b{background:var(--wash2);border-radius:6px;padding:4px 9px;color:var(--ink3);font-weight:600}
+.ba .a{background:var(--agent-bg);border-radius:6px;padding:4px 9px;color:var(--agent);font-weight:700}
+.ba .ar{color:var(--ink3)}
+
+/* ---- lessons ---- */
+.less{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.lcard{border:1px solid var(--line);border-radius:9px;padding:15px 17px;display:flex;gap:12px;align-items:flex-start;min-height:92px}
+.lcard .n{font-size:15px;font-weight:800;color:var(--agent);flex:none;width:20px;font-variant-numeric:tabular-nums}
+.lcard .tx{font-size:13.1px;line-height:1.58;color:var(--ink2)}
+.lcard .tx b{color:var(--ink);font-weight:800}
+
+/* ---- closing ---- */
+.closing{justify-content:center;align-items:flex-start;padding:0 76px}
+.closing h1{font-size:40px;line-height:1.3}
+.closing .rule{width:64px;height:4px;background:var(--accent);margin:24px 0 22px;border-radius:2px}
+.closing p{font-size:16.5px;color:var(--ink2);line-height:1.75;max-width:740px}
+.closing p b{color:var(--ink)}
+
+/* ---- overview / help ---- */
+#ov{position:fixed;inset:0;background:#171C24;z-index:50;display:none;overflow:auto;padding:34px}
+#ov.on{display:block}
+#ovg{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;max-width:1180px;margin:0 auto}
+.thumb{background:#fff;border-radius:8px;aspect-ratio:16/9;position:relative;cursor:pointer;overflow:hidden;border:2px solid transparent;padding:12px}
+.thumb:hover,.thumb.cur{border-color:var(--accent)}
+.thumb .tn{position:absolute;right:8px;bottom:6px;font-size:10px;color:var(--ink3)}
+.thumb .tt{font-size:12px;font-weight:800;line-height:1.35;color:var(--ink)}
+.thumb .tc{font-size:9.5px;color:var(--accent);font-weight:800;margin-bottom:4px}
+#help{position:fixed;left:16px;bottom:14px;font-size:11.5px;color:#8892A0;z-index:20;transition:opacity .5s ease}
+#help.hide{opacity:0}
+@media print{
+  body{background:#fff;overflow:visible}
+  #stage{position:static}
+  #deck{transform:none!important;width:100%;height:auto}
+  .slide{display:flex!important;position:relative;width:1280px;height:720px;page-break-after:always;break-after:page}
+  #help,#ov{display:none!important}
+  @page{size:1280px 720px;margin:0}
+}
+
+/* ===== embedded: roadmap ===== */
+
+  .emb-rm{
+    --ink:#1e2530;
+    --muted:#5a6577;
+    --line:#e3e8f0;
+    --page:#e9edf3;
+
+    --head-a:#313d54;
+    --head-b:#44547320;
+
+    --was:#8b95a7;
+    --was-bg:#f4f6f9;
+    --was-lbl:#e4e8ef;
+
+    --is:#4a6da0;
+    --is-bg:#eef3fb;
+    --is-lbl:#dbe6f6;
+
+    --to:#3b56d6;
+    --to-bg:#f3f5ff;
+
+    --green-bg:#daf3e7;--green-bd:#7fd3ae;--green-tx:#0d6e52;
+    --blue-bg:#dde8fc;--blue-bd:#9bbdf0;--blue-tx:#1b4bd6;
+    --agent:#3b56d6;
+    --check:#12a07a;
+  }
+
+  /* ---- Matrix grid ---- */
+  .rm-matrix{
+    display:grid;
+    grid-template-columns:150px repeat(4,1fr);
+    column-gap:16px;row-gap:14px;
+    margin-top:6px;
+  }
+
+  /* header phase bar */
+  .rm-phase{
+    grid-row:1;
+    position:relative;
+    background:linear-gradient(180deg,#3a4762,#2c374d);
+    color:#fff;
+    border-radius:11px;
+    padding:13px 10px;
+    text-align:center;
+    font-size:15px;font-weight:700;
+    box-shadow:0 6px 14px -8px rgba(30,45,80,.5);
+  }
+  .rm-phase:not(.rm-last)::after{
+    content:"";position:absolute;right:-15px;top:50%;
+    transform:translateY(-50%);
+    width:0;height:0;
+    border-top:9px solid transparent;
+    border-bottom:9px solid transparent;
+    border-left:11px solid #b7c1d3;
+    z-index:2;
+  }
+  .rm-p1{grid-column:2/3}.rm-p2{grid-column:3/4}.rm-p3{grid-column:4/5}.rm-p4{grid-column:5/6}
+
+  /* left stage labels */
+  .rm-stage{
+    border-radius:13px;
+    padding:16px 14px;
+    display:flex;flex-direction:column;justify-content:center;gap:4px;
+    color:#fff;
+  }
+  .rm-stage .rm-n{font-size:19px;font-weight:800;letter-spacing:-.02em}
+  .rm-stage .rm-s{font-size:11.5px;font-weight:500;opacity:.92;line-height:1.35}
+  .rm-stage.rm-was{background:linear-gradient(160deg,#9aa4b6,#7c8699);grid-column:1;grid-row:2}
+  .rm-stage.rm-is {background:linear-gradient(160deg,#5a7cae,#42618f);grid-column:1;grid-row:3}
+  .rm-stage.rm-to {background:linear-gradient(160deg,#5468e6,#3547c4);grid-column:1;grid-row:4/6;
+             box-shadow:0 10px 22px -12px rgba(59,86,214,.6)}
+
+  /* content cells */
+  .rm-cell{display:flex;flex-direction:column;gap:8px}
+  .rm-r-was{grid-row:2}.rm-r-is{grid-row:3}.rm-r-to{grid-row:4}
+
+  .rm-step{
+    position:relative;
+    border-radius:10px;
+    padding:11px 12px;
+    font-size:13px;font-weight:700;line-height:1.35;
+    border:1px solid transparent;
+  }
+  .rm-was .rm-step,.rm-cell.rm-was-c .rm-step{background:var(--was-bg);border-color:#e1e6ee;color:#3f4a5c}
+  .rm-cell.rm-is-c .rm-step{background:var(--is-bg);border-color:#d5e1f4;color:#2f466b}
+  .rm-cell.rm-to-c .rm-step{background:#fff;border:1.5px solid #c3ccf7;color:#2b3ba8;
+                   box-shadow:0 4px 10px -8px rgba(59,86,214,.5)}
+
+  /* row-to-row flow arrows between adjacent step cells */
+  .rm-step.rm-arrow-r::after{
+    content:"";position:absolute;top:50%;right:-14px;transform:translateY(-50%);
+    width:0;height:0;
+    border-top:5px solid transparent;border-bottom:5px solid transparent;
+    border-left:8px solid currentColor;
+    z-index:3;
+  }
+  .rm-r-was .rm-step.rm-arrow-r::after{color:var(--was)}
+  .rm-r-is  .rm-step.rm-arrow-r::after{color:var(--is)}
+  .rm-r-to  .rm-step.rm-arrow-r::after{color:var(--agent)}
+
+  .rm-notes{list-style:none;display:flex;flex-direction:column;gap:5px;padding:0 3px}
+  .rm-notes li{
+    position:relative;padding-left:17px;
+    font-size:11.5px;line-height:1.4;color:var(--muted);
+  }
+  .rm-notes li::before{
+    content:"✓";position:absolute;left:0;top:0;
+    color:var(--check);font-weight:800;font-size:11px;
+  }
+
+  /* To-be AI agent grouped box */
+  .rm-agentbox{
+    grid-row:4;grid-column:3/6;
+    position:relative;
+    border:1.6px dashed var(--agent);
+    background:linear-gradient(180deg,#f6f8ff,#eef2ff);
+    border-radius:14px;
+    padding:16px 14px 14px;
+    display:grid;
+    grid-template-columns:1fr 16px 1fr 16px 1fr;
+    grid-template-rows:auto 16px auto;
+    box-shadow:0 10px 26px -16px rgba(59,86,214,.55);
+  }
+  .rm-chip{
+    border-radius:10px;
+    padding:12px 12px;
+    font-size:12.5px;font-weight:700;line-height:1.35;
+    border:1.5px solid transparent;
+    display:flex;align-items:center;
+    min-height:52px;
+  }
+  .rm-chip.rm-green{background:var(--green-bg);border-color:var(--green-bd);color:var(--green-tx)}
+  .rm-chip.rm-blue {background:var(--blue-bg);border-color:var(--blue-bd);color:var(--blue-tx)}
+
+  .rm-agentbox .rm-report-cell{
+    background:#fff;border:1.5px solid #c3ccf7;color:#2b3ba8;
+    border-radius:10px;padding:12px;
+    display:flex;align-items:center;justify-content:center;text-align:center;
+    font-size:13px;font-weight:700;line-height:1.35;
+    box-shadow:0 4px 10px -8px rgba(59,86,214,.5);
+  }
+
+  /* internal AI-agent step flow arrows */
+  .rm-aflow{display:flex;align-items:center;justify-content:center}
+  .rm-aflow::after{content:"";width:0;height:0}
+  .rm-aflow.rm-h::after{border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid var(--agent)}
+  .rm-aflow.rm-v::after{border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid var(--agent)}
+  .rm-aflow.rm-d::after{border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid var(--agent);transform:rotate(45deg)}
+
+  .rm-agent-tag{
+    position:absolute;top:-13px;right:14px;
+    background:var(--agent);color:#fff;
+    font-size:11.5px;font-weight:700;
+    padding:5px 12px;border-radius:999px;
+    box-shadow:0 6px 14px -6px rgba(59,86,214,.7);
+    white-space:nowrap;
+  }
+
+  /* To-be footer checklist */
+  .rm-to-foot{
+    grid-row:5;grid-column:2/6;
+    margin-top:2px;
+    background:linear-gradient(180deg,#f4f6ff,#eef1fd);
+    border:1px solid #d9dffb;
+    border-radius:13px;
+    padding:14px 20px;
+    display:grid;grid-template-columns:1fr 1fr;
+    column-gap:34px;row-gap:9px;
+  }
+  .rm-to-foot .rm-f{
+    position:relative;padding-left:24px;
+    font-size:12.5px;font-weight:600;line-height:1.4;color:#28325a;
+  }
+  .rm-to-foot .rm-f::before{
+    content:"✓";position:absolute;left:0;top:-1px;
+    width:16px;height:16px;border-radius:50%;
+    background:var(--agent);color:#fff;
+    font-size:10px;font-weight:800;
+    display:flex;align-items:center;justify-content:center;
+  }
+
+/* ===== embedded: deck ===== */
+
+  .emb-dk{
+    --ink:#1e2530;--muted:#5a6577;--faint:#8a93a5;
+    --green-bg:#daf3e7;--green-bd:#7fd3ae;--green-tx:#0d6e52;
+    --blue-bg:#dde8fc;--blue-bd:#9bbdf0;--blue-tx:#1b4bd6;
+    --orange-bg:#fdeee1;--orange-bd:#f0c39a;--orange-tx:#b25a1c;
+    --indigo:#3b56d6;--indigo-soft:#eef2ff;--indigo-bd:#c3ccf7;
+    --slate-bg:#f4f6f9;--slate-bd:#e1e6ee;--slate-tx:#3f4a5c;
+    --check:#12a07a;--page:#e9edf3;
+  }
+  
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .dk-kicker{font-size:12px;font-weight:700;color:var(--indigo);margin-bottom:2px}
+  .dk-stitle{font-size:22px;font-weight:800;letter-spacing:-.02em;margin-bottom:20px}
+  .dk-stitle small{font-size:13px;font-weight:600;color:var(--faint);margin-left:8px}
+
+  /* ---- shared atoms ---- */
+  .dk-badge{display:inline-flex;align-items:center;justify-content:center;
+    width:22px;height:22px;border-radius:50%;background:var(--indigo);color:#fff;
+    font-size:12px;font-weight:800;flex:none;box-shadow:0 3px 8px -3px rgba(59,86,214,.7)}
+  .dk-hbar{background:linear-gradient(180deg,#3a4762,#2c374d);color:#fff;border-radius:10px;
+    padding:11px 10px;text-align:center;font-size:14px;font-weight:700;
+    box-shadow:0 6px 14px -8px rgba(30,45,80,.5)}
+  .dk-box{background:#fff;border:1.4px solid var(--slate-bd);border-radius:10px;
+    padding:11px 12px;font-size:12.5px;font-weight:600;color:var(--slate-tx);
+    text-align:center;line-height:1.35;display:flex;align-items:center;justify-content:center}
+  .dk-box.dk-green{background:var(--green-bg);border-color:var(--green-bd);color:var(--green-tx);font-weight:700}
+  .dk-box.dk-blue{background:var(--blue-bg);border-color:var(--blue-bd);color:var(--blue-tx);font-weight:700}
+  .dk-box.dk-ind{background:#fff;border:1.5px solid var(--indigo-bd);color:#2b3ba8;font-weight:700;
+    box-shadow:0 4px 10px -8px rgba(59,86,214,.5)}
+  .dk-box.dk-dash{background:var(--indigo-soft);border:1.6px dashed var(--indigo);color:#2b3ba8;font-weight:700}
+  .dk-sec{border:1.6px solid var(--indigo-bd);border-radius:14px;padding:14px 14px 14px;
+    background:linear-gradient(180deg,#fbfcff,#f5f7ff);position:relative}
+  .dk-sec-h{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .dk-sec-h b{font-size:14px;font-weight:800;color:#2b3ba8}
+  .dk-sec-h .dk-org{margin-left:auto;font-size:11px;font-weight:600;color:var(--faint)}
+  .dk-note{font-size:11px;font-style:italic;font-weight:600;color:var(--indigo);opacity:.8}
+  .dk-cap{font-size:10.5px;color:var(--faint);text-align:center;line-height:1.3}
+
+  .dk-flow{display:flex;align-items:center;gap:0}
+  .dk-flow>.dk-box,.dk-flow>.dk-hbar{flex:1}
+  .dk-arw{flex:none;width:26px;position:relative}
+  .dk-arw::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:0;height:0;border-top:6px solid transparent;border-bottom:6px solid transparent;
+    border-left:9px solid #a7b1c6}
+  .dk-arw-d{height:20px;position:relative}
+  .dk-arw-d::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;
+    border-top:9px solid #a7b1c6}
+
+  .dk-db{position:relative;margin-top:10px;padding:14px 12px 10px;border:1.5px solid var(--indigo-bd);
+    border-top:none;background:linear-gradient(180deg,#eef2ff,#e3e9ff);border-radius:0 0 14px 14px;
+    text-align:center;font-size:12px;font-weight:700;color:#2b3ba8}
+  .dk-db::before{content:"";position:absolute;top:-9px;left:-1.5px;right:-1.5px;height:16px;
+    border:1.5px solid var(--indigo-bd);border-radius:50%;background:#eef2ff}
+
+  .dk-grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .dk-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+  .dk-grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+
+  /* ===== Slide 1 (P-Mix Simulation Agent) specifics ===== */
+  .dk-chatrow{display:flex;justify-content:center;gap:0;align-items:center;margin-bottom:14px}
+  .dk-chatrow .dk-box{flex:none;min-width:150px}
+
+  /* ===== Slide 2 (Data value chain) matrix ===== */
+  .dk-dmx{display:grid;grid-template-columns:26px 1fr 1fr 1fr 22px 1fr 1fr 26px;gap:7px}
+  .dk-dmx .dk-vl{writing-mode:vertical-rl;display:flex;align-items:center;justify-content:center;
+    background:#eef2f7;border:1px solid #dbe2ec;border-radius:8px;font-size:12px;font-weight:700;
+    color:#3f4a5c;letter-spacing:.12em}
+  .dk-dmx .dk-hd{border-radius:8px;padding:8px;text-align:center;font-size:12.5px;font-weight:700}
+  .dk-dmx .dk-hd.dk-a{background:#e5ecf6;color:#37527a}
+  .dk-dmx .dk-hd.dk-b{background:#e5ecf6;color:#37527a}
+  .dk-dmx .dk-hd.dk-c{background:var(--green-bg);color:var(--green-tx)}
+  .dk-dmx .dk-cell{background:#f6f8fb;border:1px solid #e4e9f1;border-radius:8px;padding:9px 6px;
+    text-align:center;font-size:11.5px;font-weight:600;color:#41506a;line-height:1.3;
+    display:flex;align-items:center;justify-content:center}
+  .dk-dmx .dk-cell.dk-prof{background:#e9f7f0;border-color:#bfe6d3;color:#0f6e52;font-weight:700}
+  .dk-dmx .dk-cell.dk-inc{background:#eaf1fb;border-color:#cadcf5;color:#1e4796;font-weight:700}
+  .dk-dmx .dk-ar{grid-row:2/6;display:flex;align-items:center;justify-content:center;color:#8aa0c6;font-size:18px;font-weight:800}
+
+  /* ===== Slide 3 (GaiA architecture) ===== */
+  .dk-arch{display:flex;gap:12px;align-items:stretch}
+  .dk-hcp{flex:none;width:40px;border:1.5px solid #d5dbe6;border-radius:12px;background:#f3f5f9;
+    display:flex;align-items:center;justify-content:center}
+  .dk-hcp span{writing-mode:vertical-rl;font-size:14px;font-weight:800;color:#54617a;letter-spacing:.15em}
+  .dk-panel{border:1.5px solid var(--indigo-bd);border-radius:14px;padding:13px 13px 14px;
+    background:linear-gradient(180deg,#f7f9ff,#eef2fd);position:relative;display:flex;flex-direction:column;gap:10px}
+  .dk-panel.dk-orange{border-color:var(--orange-bd);background:linear-gradient(180deg,#fef8f2,#fdefe3)}
+  .dk-panel.dk-plain{background:#fff}
+  .dk-p-h{display:flex;align-items:center;gap:8px}
+  .dk-p-h b{font-size:14px;font-weight:800;color:#2b3ba8}
+  .dk-panel.dk-orange .dk-p-h b{color:var(--orange-tx)}
+  .dk-p-h .dk-rt{margin-left:auto;font-size:10.5px;font-weight:700;color:var(--faint)}
+  .dk-sub{border:1.2px solid #dfe4ef;border-radius:10px;padding:9px 9px;background:#fff}
+  .dk-sub-t{font-size:11.5px;font-weight:800;margin-bottom:7px;display:flex;align-items:center;gap:6px}
+  .dk-sub-t.dk-red{color:#c0492b}
+  .dk-mini{background:#f5f7fb;border:1px solid #e2e8f1;border-radius:7px;padding:7px 5px;
+    text-align:center;font-size:11px;font-weight:600;color:#43506a;line-height:1.25}
+  .dk-mini.dk-g{background:var(--green-bg);border-color:var(--green-bd);color:var(--green-tx);font-weight:700}
+
+  /* vertical flow arrow (line + head) between sections */
+  .dk-vflow{height:30px;position:relative;margin:0 auto}
+  .dk-vflow::before{content:"";position:absolute;left:50%;top:0;height:21px;width:2px;background:#9fb0cf;transform:translateX(-50%)}
+  .dk-vflow::after{content:"";position:absolute;left:50%;top:19px;transform:translateX(-50%);
+    width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:10px solid #9fb0cf}
+  /* inter-panel connector (slide 3) */
+  .dk-conn{flex:none;width:66px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px}
+  .dk-conn .dk-lbl{font-size:9.5px;font-weight:700;color:var(--faint);text-align:center;line-height:1.2}
+  .dk-conn .dk-ln{width:100%;height:0;border-top:2px solid #9fb0cf;position:relative}
+  .dk-conn .dk-ln.dk-dash{border-top-style:dashed;border-color:var(--indigo)}
+  .dk-conn .dk-ln::after{content:"";position:absolute;right:-1px;top:-6px;
+    width:0;height:0;border-top:6px solid transparent;border-bottom:6px solid transparent;border-left:9px solid #9fb0cf}
+  .dk-conn .dk-ln.dk-dash::after{border-left-color:var(--indigo)}
+
+
+/* fallback palette for embedded diagrams */
+:root{
+  --head-a:#313d54;
+  --head-b:#44547320;
+  --was:#8b95a7;
+  --was-bg:#f4f6f9;
+  --was-lbl:#e4e8ef;
+  --is:#4a6da0;
+  --is-bg:#eef3fb;
+  --is-lbl:#dbe6f6;
+  --to:#3b56d6;
+  --to-bg:#f3f5ff;
+  --green-bg:#daf3e7;
+  --green-bd:#7fd3ae;
+  --green-tx:#0d6e52;
+  --blue-bg:#dde8fc;
+  --blue-bd:#9bbdf0;
+  --blue-tx:#1b4bd6;
+  --agent:#3b56d6;
+  --check:#12a07a;
+  --faint:#8a93a5;
+  --orange-bg:#fdeee1;
+  --orange-bd:#f0c39a;
+  --orange-tx:#b25a1c;
+  --indigo:#3b56d6;
+  --indigo-soft:#eef2ff;
+  --indigo-bd:#c3ccf7;
+  --slate-bg:#f4f6f9;
+  --slate-bd:#e1e6ee;
+  --slate-tx:#3f4a5c;
+}
+
+/* number badges: guarantee contrast */
+.card .num,.lyr .lab .n,.fitem .fn,.ecard .ic,.dk-badge{
+  background-color:#3B56D6!important;color:#fff!important;
+}
+.rm-to-foot .rm-f::before{background-color:#3B56D6!important;color:#fff!important}
+.rm-agent-tag{background-color:#3B56D6!important;color:#fff!important}
+.emb-dk svg .num{fill:#fff!important}
+
+/* ===== v2 keyword-first layout ===== */
+.flowline{display:flex;align-items:stretch;gap:0;width:100%}
+.flowline .fs{flex:1;border:1.4px solid var(--line);background:var(--wash);border-radius:10px;
+  padding:13px 12px;display:flex;align-items:center;justify-content:center;text-align:center;
+  font-size:14px;font-weight:700;line-height:1.4;color:var(--ink2)}
+.flowline .fa{flex:none;width:30px;position:relative}
+.flowline .fa::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:0;height:0;border-top:7px solid transparent;border-bottom:7px solid transparent;border-left:10px solid #A7B1C6}
+.flowline.dark .fs{background:linear-gradient(180deg,#3a4762,#2c374d);border-color:transparent;color:#fff;font-weight:700}
+.flowline.blue .fs{background:var(--is-bg);border-color:#d5e1f4;color:#2f466b}
+.flowline.ind .fs{background:#fff;border:1.5px solid var(--agent-line);color:#2b3ba8}
+
+.rowlbl{display:grid;grid-template-columns:104px 1fr;gap:14px;align-items:center}
+.rowlbl .tag{border-radius:10px;padding:12px 10px;text-align:center;color:#fff;
+  font-size:15px;font-weight:800;letter-spacing:-.02em;line-height:1.3}
+.tag.was{background:linear-gradient(160deg,#9aa4b6,#7c8699)}
+.tag.is{background:linear-gradient(160deg,#5a7cae,#42618f)}
+.tag.to{background:linear-gradient(160deg,#5468e6,#3547c4)}
+.tag small{display:block;font-size:10.5px;font-weight:600;opacity:.9;margin-top:3px}
+
+.blk{display:flex;flex-direction:column;gap:9px}
+.blk .bt{font-size:13px;font-weight:800;color:var(--accent);letter-spacing:.01em}
+
+.kw3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.kwc{border:1px solid var(--line);border-radius:11px;padding:15px 17px;background:var(--paper);
+  display:flex;flex-direction:column;gap:9px}
+.kwc .kt{display:flex;align-items:center;gap:9px;font-size:15.5px;font-weight:800;line-height:1.3}
+.kwc .kn{width:24px;height:24px;border-radius:7px;background:#3B56D6;color:#fff;font-size:12.5px;
+  font-weight:800;display:grid;place-items:center;flex:none}
+.kwc ul{list-style:none;display:flex;flex-direction:column;gap:7px}
+.kwc li{position:relative;padding-left:15px;font-size:13.2px;line-height:1.55;color:var(--ink2)}
+.kwc li::before{content:"";position:absolute;left:2px;top:8px;width:5px;height:5px;border-radius:50%;background:#9BBDF0}
+
+.pain{background:var(--wash);border:1px solid var(--line);border-radius:11px;padding:14px 18px;
+  display:flex;flex-direction:column;gap:8px}
+.pain .pt{font-size:13px;font-weight:800;color:var(--accent)}
+.pain li{list-style:none;position:relative;padding-left:17px;font-size:13.6px;line-height:1.6;color:var(--ink2)}
+.pain li::before{content:"!";position:absolute;left:2px;top:0;color:#C0492B;font-weight:800;font-size:12px}
+
+.qcards{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+.qc{border:1.4px solid var(--agent-line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.qc .qh{background:var(--agent-bg);padding:11px 15px;font-size:15px;font-weight:800;color:var(--agent)}
+.qc .qb{padding:15px;font-size:13.6px;line-height:1.65;color:var(--ink2);flex:1;background:var(--paper);
+  display:flex;align-items:center}
+.qc .qb::before{content:"“";font-size:26px;color:var(--agent-line);margin-right:6px;line-height:1;font-weight:800}
+
+.tob{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.tob .tcard{border:1.4px solid var(--line);border-radius:12px;padding:17px 19px;display:flex;flex-direction:column;gap:10px}
+.tob .tcard.now{background:var(--wash)}
+.tob .tcard.next{border-color:var(--agent-line);background:linear-gradient(180deg,#f7f9ff,#eef2ff)}
+.tob .th{font-size:15.5px;font-weight:800}
+.tob .tcard.next .th{color:var(--agent)}
+.tob .chips{display:flex;flex-wrap:wrap;gap:7px}
+.tob .cp{border:1.3px solid var(--green-line);background:var(--green-bg);color:var(--green);
+  border-radius:8px;padding:8px 13px;font-size:13.5px;font-weight:700}
+.tob .tcard.next .cp{border-color:var(--agent-line);background:#fff;color:var(--agent)}
+.tob .tv{font-size:13.2px;color:var(--ink3);line-height:1.6}
+
+.ll{display:flex;flex-direction:column;gap:14px}
+.llc{border-left:4px solid var(--accent);background:var(--wash);border-radius:0 12px 12px 0;
+  padding:20px 24px;font-size:17px;font-weight:700;line-height:1.6;color:var(--ink)}
+.llc b{color:var(--accent)}
+
+/* 4P: agentbox reused outside the original matrix grid */
+.slide[data-title="P-Mix 수익성 산출"] .rm-agentbox{grid-row:auto!important;grid-column:auto!important;margin:0}
+.slide[data-title="P-Mix 수익성 산출"] .flowline.ind .fs{min-height:96px}
+
+/* 4P: three stacked rows — tighten to fit 720px */
+.slide[data-title="P-Mix 수익성 산출"] .body{gap:11px}
+.slide[data-title="P-Mix 수익성 산출"] .flowline .fs{padding:11px 10px;font-size:13.4px}
+.slide[data-title="P-Mix 수익성 산출"] .rm-agentbox{padding:14px 12px 12px}
+.slide[data-title="P-Mix 수익성 산출"] .rm-chip{min-height:46px;padding:10px 11px;font-size:12px}
+.slide[data-title="P-Mix 수익성 산출"] .rm-report-cell{font-size:12.5px;padding:10px}
+
+/* ================= v2.1 : denser + more color ================= */
+.slide{padding:32px 46px 42px}
+.head{padding-bottom:11px;margin-bottom:14px}
+h1{font-size:26px}
+.sub{font-size:13.5px;margin-top:6px}
+.body{gap:12px;justify-content:stretch}
+
+.agentscope{position:relative;border:1.8px dashed var(--agent);border-radius:14px;
+  padding:16px 12px 12px;background:linear-gradient(180deg,#f7f9ff,#eef2ff);margin:4px 0}
+.astag{position:absolute;top:-12px;left:18px;background:#3B56D6;color:#fff;font-size:11.5px;
+  font-weight:800;padding:4px 12px;border-radius:999px}
+
+/* --- concept cards (P2) --- */
+.cc2{display:grid;grid-template-columns:1fr 1fr;gap:16px;flex:1}
+.cbox{border-radius:14px;padding:20px 22px;display:flex;flex-direction:column;gap:11px;border:1.5px solid}
+.cbox.a{background:linear-gradient(160deg,#eef3fd,#e2ebfa);border-color:#b9cdee}
+.cbox.b{background:linear-gradient(160deg,#e9f7f0,#dcf1e7);border-color:#a5ddc3}
+.cbox .ch2{font-size:20px;font-weight:800;letter-spacing:-.02em;display:flex;align-items:center;gap:9px}
+.cbox.a .ch2{color:#1B4BD6}.cbox.b .ch2{color:#0D6E52}
+.cbox .ch2 .ic{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;
+  font-size:13px;font-weight:800;color:#fff}
+.cbox.a .ch2 .ic{background:#3B56D6}.cbox.b .ch2 .ic{background:#12A07A}
+.cbox .dfn{background:rgba(255,255,255,.75);border-radius:10px;padding:13px 15px;
+  font-size:14.2px;line-height:1.65;color:var(--ink2);font-weight:500}
+.cbox .dfn b{color:var(--ink);font-weight:800}
+.cbox .fx{background:#fff;border:1.4px solid rgba(0,0,0,.07);border-radius:10px;padding:14px;
+  text-align:center;font-size:15px;font-weight:800;color:var(--ink);line-height:1.6}
+.cbox .fx em{font-style:normal;color:#3B56D6}
+.cbox .fn2{font-size:12.4px;color:var(--ink3);line-height:1.55}
+.cbox ul{list-style:none;display:flex;flex-direction:column;gap:6px}
+.cbox li{position:relative;padding-left:15px;font-size:13.4px;line-height:1.55;color:var(--ink2)}
+.cbox li::before{content:"";position:absolute;left:2px;top:8px;width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.5}
+
+/* --- P3 compact flow --- */
+.flowline .fs{padding:10px 9px;font-size:13px}
+.flowline.dark .fs{font-size:13.5px}
+.rowlbl{grid-template-columns:96px 1fr;gap:11px}
+.rowlbl .tag{padding:10px 8px;font-size:14px}
+.painbar{display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:12px;align-items:center;
+  background:linear-gradient(180deg,#fff6f0,#fdeee1);border:1.4px solid #f0c39a;border-radius:12px;padding:12px 16px}
+.painbar .pl{font-size:12.5px;font-weight:800;color:#B25A1C;white-space:nowrap;padding-right:4px;border-right:1px solid #f0c39a}
+.painbar .pi{font-size:13px;line-height:1.5;color:#7a4a26;font-weight:600}
+
+/* --- requirement cards (P5) --- */
+.rq3{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;flex:1}
+.rqc{border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:12px;justify-content:center;border:1.5px solid}
+.rqc:nth-child(1){background:linear-gradient(160deg,#eef3fd,#e0e9fa);border-color:#b9cdee}
+.rqc:nth-child(2){background:linear-gradient(160deg,#e9f7f0,#daf0e5);border-color:#a5ddc3}
+.rqc:nth-child(3){background:linear-gradient(160deg,#fdf3e9,#fbe9d8);border-color:#f0cfa8}
+.rqc .rn{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
+  font-size:16px;font-weight:800;color:#fff}
+.rqc:nth-child(1) .rn{background:#3B56D6}
+.rqc:nth-child(2) .rn{background:#12A07A}
+.rqc:nth-child(3) .rn{background:#D2802F}
+.rqc .rt{font-size:18.5px;font-weight:800;line-height:1.4;letter-spacing:-.02em}
+.rqc .rd{font-size:13.4px;line-height:1.6;color:var(--ink2)}
+
+/* --- differentiation (P6) --- */
+.df3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;flex:1}
+.dfc{border-radius:13px;overflow:hidden;display:flex;flex-direction:column;border:1.5px solid}
+.dfc:nth-child(1){border-color:#b9cdee}
+.dfc:nth-child(2){border-color:#a5ddc3}
+.dfc:nth-child(3){border-color:#f0cfa8}
+.dfc .dh{padding:13px 17px;font-size:17px;font-weight:800;color:#fff;display:flex;align-items:center;gap:9px}
+.dfc:nth-child(1) .dh{background:linear-gradient(135deg,#4a63e0,#3547c4)}
+.dfc:nth-child(2) .dh{background:linear-gradient(135deg,#17a97f,#0d6e52)}
+.dfc:nth-child(3) .dh{background:linear-gradient(135deg,#dd9040,#b25a1c)}
+.dfc .dh .dn{width:24px;height:24px;border-radius:7px;background:rgba(255,255,255,.25);
+  display:grid;place-items:center;font-size:12.5px;font-weight:800;flex:none}
+.dfc .db{flex:1;padding:15px 17px;display:flex;flex-direction:column;gap:10px}
+.dfc:nth-child(1) .db{background:#f6f9fe}
+.dfc:nth-child(2) .db{background:#f4fbf8}
+.dfc:nth-child(3) .db{background:#fdf8f2}
+.dfc .db .it2{position:relative;padding-left:24px;font-size:13.3px;line-height:1.6;color:var(--ink2)}
+.dfc .db .it2 .no{position:absolute;left:0;top:1px;width:17px;height:17px;border-radius:5px;
+  font-size:10.5px;font-weight:800;display:grid;place-items:center;color:#fff}
+.dfc:nth-child(1) .it2 .no{background:#5468e6}
+.dfc:nth-child(2) .it2 .no{background:#12a07a}
+.dfc:nth-child(3) .it2 .no{background:#d2802f}
+.dfc .db .it2 b{color:var(--ink);font-weight:800}
+
+/* --- case generation (P9) --- */
+.tob{gap:16px;flex:1}
+.tob .tcard{padding:22px 24px;gap:14px;justify-content:center;border-width:1.5px}
+.tob .tcard.now{background:linear-gradient(160deg,#f2f5f9,#e8edf4);border-color:#c9d4e3}
+.tob .tcard.next{background:linear-gradient(160deg,#eef2ff,#e2e8ff);border-color:#b3c0f5}
+.tob .th{font-size:18px}
+.tob .cp{font-size:14.5px;padding:10px 16px}
+.tob .tv{font-size:14px;color:var(--ink2);line-height:1.65}
+.tob .badge2{align-self:flex-start;background:#3B56D6;color:#fff;font-size:11.5px;font-weight:800;
+  padding:4px 11px;border-radius:999px}
+
+/* --- lessons (P10) --- */
+.ll6{display:grid;grid-template-columns:1fr 1fr;gap:12px;flex:1}
+.l6{border-radius:12px;padding:15px 17px;display:flex;gap:12px;align-items:flex-start;border:1.4px solid}
+.l6:nth-child(odd){background:linear-gradient(160deg,#f5f8fd,#eaf0fa);border-color:#c9d8ef}
+.l6:nth-child(even){background:linear-gradient(160deg,#f4faf7,#e8f4ee);border-color:#bfe0ce}
+.l6 .ln{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;flex:none;
+  font-size:12.5px;font-weight:800;color:#fff}
+.l6:nth-child(odd) .ln{background:#3B56D6}
+.l6:nth-child(even) .ln{background:#12A07A}
+.l6 .lt{font-size:13.6px;line-height:1.6;color:var(--ink2)}
+.l6 .lt b{color:var(--ink);font-weight:800;display:block;margin-bottom:3px;font-size:14.2px}
+
+/* P3: four stacked rows + pain bar — compress to fit */
+.slide[data-title="P-Mix 수익성 산출"] .body{gap:9px}
+.slide[data-title="P-Mix 수익성 산출"] .flowline .fs{padding:9px 8px;font-size:12.4px;line-height:1.35}
+.slide[data-title="P-Mix 수익성 산출"] .rm-chip{min-height:40px;padding:8px 10px;font-size:11.4px}
+.slide[data-title="P-Mix 수익성 산출"] .rm-report-cell{font-size:11.8px;padding:8px}
+.slide[data-title="P-Mix 수익성 산출"] .rm-agentbox{padding:13px 11px 11px}
+.slide[data-title="P-Mix 수익성 산출"] .rm-agent-tag{font-size:10.5px;padding:4px 10px;top:-11px}
+.slide[data-title="P-Mix 수익성 산출"] .painbar{padding:10px 14px}
+.slide[data-title="P-Mix 수익성 산출"] .painbar .pi{font-size:12.2px}
+
+/* ================= v2.2 ================= */
+/* 2P : boxes hug their content */
+.cc2{align-content:center}
+.cbox{gap:9px;padding:17px 19px}
+.cbox .dfn{padding:11px 13px;font-size:13.6px;line-height:1.6}
+.cbox .fx{padding:12px 14px;font-size:15px;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+.cbox .fx .ar2{color:#12A07A;font-weight:800;font-size:17px}
+.cbox .ch2{font-size:18.5px}
+.cbox li{font-size:13px}
+
+/* 3P : keyword emphasis + smaller pain bar */
+.hx{color:#1F7A4D;font-weight:800}
+.hs{color:#1B4BD6;font-weight:800}
+.ha{color:#3B56D6;font-weight:800}
+.slide[data-title="P-Mix 수익성 산출"] .painbar{padding:8px 14px;gap:10px}
+.slide[data-title="P-Mix 수익성 산출"] .painbar .pl{font-size:11px}
+.slide[data-title="P-Mix 수익성 산출"] .painbar .pi{font-size:11.4px;line-height:1.45}
+
+/* 4P : red agent scope */
+.agentscope{border-color:#D64545!important;
+  background:linear-gradient(180deg,#fff7f6,#fdecea)!important;
+  box-shadow:0 0 0 4px rgba(214,69,69,.07)}
+.astag{background:#D64545!important;font-size:12px!important;padding:5px 14px!important}
+
+/* 7P : layered cards with sub-function chain */
+.lyrs2{display:flex;flex-direction:column;gap:10px;flex:1;justify-content:center;position:relative}
+.orc{background:linear-gradient(135deg,#5468E6,#3547C4);color:#fff;border-radius:11px;
+  padding:14px 20px;font-size:19px;font-weight:800;letter-spacing:-.02em;
+  box-shadow:0 8px 18px -12px rgba(59,86,214,.8)}
+.lyr2{display:grid;grid-template-columns:190px 1fr;gap:0;align-items:stretch}
+.lyr2 .lab2{position:relative;display:flex;align-items:center;gap:8px;border-radius:10px;
+  padding:12px 16px;font-size:15.5px;font-weight:800;color:#1B4BD6;
+  border:1.5px solid #b9cdee;background:linear-gradient(160deg,#eef3fd,#e0e9fa)}
+.lyr2 .lab2 .cnt{background:#3B56D6;color:#fff;font-size:11px;font-weight:800;
+  border-radius:999px;padding:2px 8px}
+.lyr2 .lab2::after{content:"";position:absolute;right:-13px;top:50%;transform:translateY(-50%);
+  width:0;height:0;border-top:7px solid transparent;border-bottom:7px solid transparent;
+  border-left:10px solid #8FA3D8;z-index:2}
+.lyr2 .chain2{display:flex;align-items:stretch;gap:0;padding-left:26px}
+.lyr2 .sub2{position:relative;flex:1;display:flex;align-items:center;justify-content:center;
+  text-align:center;border-radius:9px;padding:11px 10px;margin-right:20px;
+  font-size:13.4px;font-weight:700;color:#2F466B;
+  border:1.4px solid #cfdcf1;background:#fff}
+.lyr2 .sub2:last-child{margin-right:0}
+.lyr2 .sub2:not(:last-child)::after{content:"";position:absolute;right:-15px;top:50%;
+  transform:translateY(-50%);width:0;height:0;
+  border-top:6px solid transparent;border-bottom:6px solid transparent;
+  border-left:9px solid #A7B1C6}
+.lyr2 .sub2.next{background:#F2F4F7;border-color:#c9d0da;color:#6B7688;border-style:dashed}
+.lyr2 .sub2.wide{flex:none;min-width:300px}
+.lyr2.ph2 .lab2{background:#F2F4F7;border-color:#c9d0da;color:#6B7688;border-style:dashed}
+.lyr2.ph2 .lab2::after{border-left-color:#c1c8d3}
+.legend2{align-self:flex-end;display:flex;align-items:center;gap:7px;font-size:11.5px;
+  font-weight:700;color:#6B7688;margin-top:2px}
+.legend2 .sw{width:22px;height:12px;border-radius:4px;background:#F2F4F7;
+  border:1.4px dashed #c9d0da;display:inline-block}
+
+/* ================= v2.3 ================= */
+/* inner wrapper keeps highlighted spans flowing inline inside flex boxes */
+.fsin{display:block;width:100%;text-align:center;line-height:1.4}
+.rm-chip .fsin{text-align:left}
+
+/* colour only — no extra weight, so highlights read as part of the sentence */
+.hx{color:#1F7A4D;font-weight:inherit}
+.hs{color:#1B4BD6;font-weight:inherit}
+.ha{color:#3B56D6;font-weight:inherit}
+
+/* ---------- 3P : fill the slide, narrower pain bar ---------- */
+.slide[data-title="P-Mix 수익성 산출"] .body{gap:12px;justify-content:space-between}
+.slide[data-title="P-Mix 수익성 산출"] .rowlbl{grid-template-columns:110px 1fr;gap:13px}
+.slide[data-title="P-Mix 수익성 산출"] .rowlbl .tag{padding:14px 8px;font-size:15px}
+.slide[data-title="P-Mix 수익성 산출"] .flowline{height:100%}
+.slide[data-title="P-Mix 수익성 산출"] .flowline .fs{padding:14px 12px;font-size:14px}
+.slide[data-title="P-Mix 수익성 산출"] .flowline.dark .fs{padding:12px;font-size:14.5px}
+.slide[data-title="P-Mix 수익성 산출"] .rm-chip{min-height:52px;padding:12px 13px;font-size:13px}
+.slide[data-title="P-Mix 수익성 산출"] .rm-report-cell{font-size:13.5px;padding:12px}
+.slide[data-title="P-Mix 수익성 산출"] .rm-agentbox{padding:17px 14px 14px}
+.slide[data-title="P-Mix 수익성 산출"] .rm-agent-tag{font-size:11.5px;padding:5px 12px;top:-12px}
+.slide[data-title="P-Mix 수익성 산출"] .painbar{
+  padding:10px 16px;gap:14px;max-width:78%;margin-left:110px;align-self:flex-start}
+.slide[data-title="P-Mix 수익성 산출"] .painbar .pl{font-size:11.5px}
+.slide[data-title="P-Mix 수익성 산출"] .painbar .pi{font-size:12px;line-height:1.5}
+
+/* ---------- 5P / 6P / 9P / 10P : boxes hug their content ---------- */
+.rq3,.df3,.tob,.ll6{flex:0 1 auto;align-content:center}
+.body{justify-content:center}
+
+/* 5P */
+.rq3{gap:16px}
+.rqc{padding:20px 20px;gap:10px}
+.rqc .rt{font-size:19px}
+.rqc .rd{font-size:13.6px}
+
+/* 6P */
+.df3{gap:14px}
+.dfc .dh{padding:12px 16px;font-size:16.5px}
+.dfc .db{padding:14px 16px;gap:9px}
+.dfc .db .it2{font-size:13.2px;line-height:1.55}
+
+/* 9P */
+.tob{gap:16px;align-items:stretch}
+.tob .tcard{padding:20px 22px;gap:12px;justify-content:flex-start}
+.tob .th{font-size:17.5px}
+.tob .tv{font-size:13.8px}
+
+/* 10P */
+.ll6{gap:11px}
+.l6{padding:13px 15px;gap:11px}
+.l6 .lt{font-size:13.2px;line-height:1.55}
+.l6 .lt b{font-size:13.8px;margin-bottom:2px}
+
+/* ================= v2.4 : 7P tree + equal-height boxes ================= */
+.tree{display:grid;grid-template-columns:210px 1fr;gap:0;flex:1;align-items:center;position:relative}
+.tree .trunk{position:relative;height:100%;display:flex;align-items:center}
+.tree .orc{background:linear-gradient(135deg,#5468E6,#3547C4);color:#fff;border-radius:12px;
+  padding:22px 16px;font-size:19px;font-weight:800;letter-spacing:-.02em;text-align:center;width:172px;
+  box-shadow:0 10px 22px -14px rgba(59,86,214,.85)}
+/* vertical trunk line + horizontal arrows */
+.tree .trunk::after{content:"";position:absolute;left:186px;top:9%;bottom:9%;width:2px;background:#8FA3D8}
+.tree .branches{display:flex;flex-direction:column;gap:11px;padding-left:24px}
+.tree .br{display:grid;grid-template-columns:190px 1fr;gap:14px;align-items:stretch;position:relative}
+.tree .br::before{content:"";position:absolute;left:-24px;top:50%;transform:translateY(-50%);
+  width:24px;height:2px;background:#8FA3D8}
+.tree .br::after{content:"";position:absolute;left:-4px;top:50%;transform:translateY(-50%);
+  width:0;height:0;border-top:6px solid transparent;border-bottom:6px solid transparent;
+  border-left:9px solid #8FA3D8}
+.tree .fn2{display:flex;align-items:center;justify-content:center;gap:8px;border-radius:10px;
+  padding:14px 14px;font-size:16px;font-weight:800;color:#1B4BD6;text-align:center;
+  border:1.5px solid #b9cdee;background:linear-gradient(160deg,#eef3fd,#e0e9fa)}
+.tree .fn2 .cnt{background:#3B56D6;color:#fff;font-size:11px;font-weight:800;border-radius:999px;padding:2px 8px}
+.tree .br.ph2 .fn2{background:#F2F4F7;border-color:#c9d0da;color:#6B7688;border-style:dashed}
+.tree .br.ph2::before{background:#9AA4B6}
+.tree .br.ph2::after{border-left-color:#9AA4B6}
+/* detail chips — no arrows, they are attributes not steps */
+.tree .det{display:flex;flex-wrap:wrap;align-content:center;gap:8px;
+  border:1px solid var(--line);border-left:3px solid #b9cdee;border-radius:8px;
+  padding:11px 14px;background:#F8FAFD}
+.tree .br.ph2 .det{border-left-color:#c9d0da;background:#F7F8FA}
+.tree .dt{background:#fff;border:1.3px solid #cfdcf1;border-radius:7px;padding:8px 13px;
+  font-size:13.2px;font-weight:700;color:#2F466B}
+.tree .dt.next{background:#F2F4F7;border-color:#c9d0da;border-style:dashed;color:#6B7688}
+.legend2{position:absolute;right:2px;top:-6px}
+
+/* ---------- equal heights : every card row matches the tallest ---------- */
+.rq3,.df3,.ll6{align-items:stretch}
+.tob{align-items:stretch}
+.cc2{align-items:stretch}
+.rqc,.dfc,.l6,.cbox,.tob .tcard{height:100%}
+
+/* ============ Korean line-breaking: never split inside a word ============ */
+.slide, .slide *, #ov, #ov *{
+  word-break:keep-all;      /* 한글은 어절(띄어쓰기) 단위로만 줄바꿈 */
+  overflow-wrap:break-word; /* 단, 한 줄을 넘는 긴 영문/코드는 예외적으로 분리 */
+  hyphens:none;
+}
+/* SVG text is single-line by design — keep it untouched */
+.emb-dk svg text, .emb-tree text{word-break:normal}
+
+/* balance headings, avoid single-word orphan lines in body text */
+h1,.rqc .rt,.dfc .dh,.cbox .ch2,.l6 .lt b,.tob .th,.card h3,.ecard h3{text-wrap:balance}
+.sub,.rqc .rd,.dfc .db .it2,.l6 .lt,.tob .tv,.cbox .dfn,.cbox li,.painbar .pi{text-wrap:pretty}
+
+/* ---- Lesson Learned : unified card colour ---- */
+.l6:nth-child(odd),.l6:nth-child(even){
+  background:linear-gradient(160deg,#f5f8fd,#eaf0fa);border-color:#c9d8ef}
+.l6:nth-child(odd) .ln,.l6:nth-child(even) .ln{background:#3B56D6}
+/* 5 cards: last one spans both columns */
+.ll6 .l6:last-child{grid-column:1 / -1}
+
+/* ---- 4P domain process : wider ---- */
+.slide[data-title="[Back-Up] 도메인 이해"] .embed>.in{max-width:none}
+.slide[data-title="[Back-Up] 도메인 이해"] .dk-sec{padding:15px 18px}
+.slide[data-title="[Back-Up] 도메인 이해"] .dk-flow .dk-box{padding:12px 14px;font-size:13px}
+
+.slide[data-title="[Back-Up] 도메인 이해"] .embed{align-items:center}
+.slide[data-title="[Back-Up] 도메인 이해"] .in{width:100%}
+
+/* ---- Lesson Learned : horizontal cards ---- */
+.llrow{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;align-items:stretch;flex:0 1 auto}
+.lc{display:flex;flex-direction:column;gap:11px;height:100%;
+  border:1.4px solid #c9d8ef;border-radius:13px;padding:18px 18px 20px;
+  background:linear-gradient(170deg,#f7f9fd,#e9f0fa)}
+.lc .ln{width:30px;height:30px;border-radius:9px;background:#3B56D6;color:#fff;
+  font-size:14px;font-weight:800;display:grid;place-items:center;flex:none}
+.lc .lt{font-size:13px;line-height:1.62;color:var(--ink2)}
+.lc .lt b{display:block;font-size:14.6px;font-weight:800;color:var(--ink);
+  margin-bottom:7px;line-height:1.4}
+
+/* ===== 5P : 3 functions + prerequisites ===== */
+.fn3{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;align-items:stretch}
+.fnc{display:flex;flex-direction:column;border-radius:13px;overflow:hidden;height:100%;
+  border:1.5px solid #b9cdee}
+.fnh{display:flex;align-items:center;gap:10px;padding:13px 17px;font-size:17.5px;font-weight:800;
+  color:#fff;background:linear-gradient(135deg,#4a63e0,#3547c4)}
+.fnn{width:25px;height:25px;border-radius:7px;background:rgba(255,255,255,.24);
+  display:grid;place-items:center;font-size:12.5px;font-weight:800;flex:none}
+.fnq{flex:1;padding:17px;font-size:13.8px;line-height:1.7;color:var(--ink2);
+  background:linear-gradient(170deg,#f7f9fd,#eef3fd);display:flex;align-items:center;position:relative}
+.fnq::before{content:"“";font-size:26px;font-weight:800;color:#b9cdee;margin-right:7px;line-height:1;align-self:flex-start}
+.preq{display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:14px;align-items:center;margin-top:2px;
+  background:linear-gradient(180deg,#f4faf7,#e8f4ee);border:1.4px solid #a5ddc3;
+  border-radius:12px;padding:14px 18px}
+.pqh{font-size:13px;font-weight:800;color:#0D6E52;white-space:nowrap;padding-right:6px;
+  border-right:1px solid #a5ddc3}
+.pqi{position:relative;padding-left:18px;font-size:13.4px;font-weight:700;color:#1c5c46;line-height:1.5}
+.pqi::before{content:"✓";position:absolute;left:0;top:0;color:#12A07A;font-weight:800;font-size:12.5px}
+
+/* ===== 10P : vertical lesson list ===== */
+.llv{display:flex;flex-direction:column;gap:11px}
+.lv{display:grid;grid-template-columns:44px 1fr;gap:14px;align-items:stretch;
+  border:1.4px solid #c9d8ef;border-radius:12px;padding:14px 18px;
+  background:linear-gradient(160deg,#f7f9fd,#eaf0fa)}
+.lvn{width:32px;height:32px;border-radius:9px;background:#3B56D6;color:#fff;
+  font-size:14.5px;font-weight:800;display:grid;place-items:center;align-self:center}
+.lvb{display:flex;flex-direction:column;gap:6px;justify-content:center}
+.lvt{font-size:16px;font-weight:800;color:var(--ink);line-height:1.35}
+.lvb ul{list-style:none;display:flex;flex-direction:column;gap:4px}
+.lvb li{position:relative;padding-left:15px;font-size:13.2px;line-height:1.55;color:var(--ink2)}
+.lvb li::before{content:"";position:absolute;left:3px;top:8px;width:5px;height:5px;
+  border-radius:50%;background:#9BBDF0}
+</style>
+</head>
+<body>
+<div id="stage"><div id="deck">
+
+<section class="slide cover on" data-ch="" data-title="표지">
+  <div class="eyebrow">AI Agent 활용 사례 공유</div>
+  <h1>SKHy G-SCM<br>P-Mix 수익성 Simulation Agent 구축</h1>
+  <div class="rule"></div>
+  <div class="meta">
+    <span>발표자 : 김경삼</span>
+    <span>2026. 09. 09</span>
+    <span>AX Solution 서비스2팀</span>
+  </div>
+</section>
+
+<section class="slide" data-ch="Ch 1. Agent 소개" data-title="Agent 소개">
+  <div class="head">
+    <div class="chapter">1. Agent 소개</div>
+    <h1>어떤 Agent를 만들어야 하는가 &mdash; P-Mix &amp; 수익성</h1>
+  </div>
+  <div class="body">
+    <div class="cc2">
+      <div class="cbox a">
+        <div class="ch2"><span class="ic">P</span>P-Mix (Product Mix)</div>
+        <div class="dfn">기업이 시장에 제공하기 위해 생산하거나 판매하는 <b>모든 제품 계열과 품목의 총체적인 집합(배합)</b></div>
+        <ul>
+          <li>현재 과업에서는 <b>DRAM / NAND 단품 기준</b>으로 P-Mix 구성</li>
+          <li>제품 계열 · 품목 단위의 배합 변화가 분석 대상</li>
+        </ul>
+      </div>
+      <div class="cbox b">
+        <div class="ch2"><span class="ic">₩</span>수익성</div>
+        <div class="fx"><em>판매 수량</em> &times; <em>원가</em> &times; <em>수율</em>
+          <span class="ar2">&rarr;</span> 매출액 · 영업이익</div>
+        <ul>
+          <li>세 가지 항목을 통해 <b>매출액과 영업이익</b>을 산출</li>
+          <li>산출된 값이 곧 <b>수익성 지표</b></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-ch="Ch 1. 과제 배경" data-title="P-Mix 수익성 산출">
+  <div class="head">
+    <div class="chapter">2. P-Mix 수익성 산출</div>
+    <h1>기존 업무 방식과 Pain Point, As-is &rarr; To-be</h1>
+  </div>
+  <div class="body">
+    <div class="rowlbl">
+      <div></div>
+      <div class="flowline dark">
+        <div class="fs"><span class="fsin">Data 취합</span></div><div class="fa"></div>
+        <div class="fs"><span class="fsin">Data 분석</span></div><div class="fa"></div>
+        <div class="fs"><span class="fsin">P-Mix Simulation</span></div><div class="fa"></div>
+        <div class="fs"><span class="fsin">리포트 작성</span></div>
+      </div>
+    </div>
+
+    <div class="rowlbl">
+      <div class="tag was">As-was<small>Manual<br>(~’24)</small></div>
+      <div class="flowline">
+        <div class="fs"><span class="fsin">수익성 기준정보<br><span class="hx">Excel</span> 파일 취합</span></div><div class="fa"></div>
+        <div class="fs"><span class="fsin"><span class="hx">Excel</span><br>수익성 결과 분석</span></div><div class="fa"></div>
+        <div class="fs"><span class="fsin"><span class="hx">Excel</span><br>P-Mix Simulation</span></div><div class="fa"></div>
+        <div class="fs"><span class="fsin">P-Mix 점검<br>Report 작성</span></div>
+      </div>
+    </div>
+
+    <div class="rowlbl">
+      <div class="tag is">As-is<small>System<br>(’25)</small></div>
+      <div class="flowline blue">
+        <div class="fs"><span class="fsin">수익성 기준정보<br><span class="hs">시스템</span> IF</span></div><div class="fa"></div>
+        <div class="fs"><span class="fsin"><span class="hs">시스템</span> 기반<br>수익성 결과 분석</span></div><div class="fa"></div>
+        <div class="fs"><span class="fsin"><span class="hs">시스템</span> 기반<br>P-Mix Simulation</span></div><div class="fa"></div>
+        <div class="fs"><span class="fsin">P-Mix 점검<br>Report 작성</span></div>
+      </div>
+    </div>
+
+    <div class="rowlbl" style="align-items:stretch">
+      <div class="tag to" style="display:flex;flex-direction:column;justify-content:center">To-be<small>AI Agent<br>(’26~)</small></div>
+      <div class="emb-rm" style="display:grid;grid-template-columns:1fr 2.35fr;gap:12px;align-items:center">
+        <div class="flowline ind"><div class="fs"><span class="fsin">수익성 기준정보<br><span class="hs">시스템</span> 자동 IF</span></div><div class="fa"></div></div>
+<div class="rm-agentbox">
+        <span class="rm-agent-tag">수익성 Simulation Agent 적용 범위</span>
+        <div class="rm-chip rm-green" style="grid-column:1;grid-row:1">수익성 분석 / Simulation 표현</div>
+        <span class="rm-aflow rm-h" style="grid-column:2;grid-row:1"></span>
+        <div class="rm-chip rm-green" style="grid-column:3;grid-row:1"><span class="fsin"><span class="ha">AI Agent</span> 기반 P-Mix Simulation</span></div>
+        <span class="rm-aflow rm-h" style="grid-column:4;grid-row:1"></span>
+
+        <span class="rm-aflow rm-v" style="grid-column:1;grid-row:2"></span>
+        <span class="rm-aflow rm-d" style="grid-column:2;grid-row:2"></span>
+
+        <div class="rm-chip rm-blue" style="grid-column:1;grid-row:3"><span class="fsin"><span class="ha">AI Agent</span> 기반 수익성 결과 분석</span></div>
+        <span class="rm-aflow rm-h" style="grid-column:2;grid-row:3"></span>
+        <div class="rm-chip rm-blue" style="grid-column:3;grid-row:3"><span class="fsin"><span class="ha">AI Agent</span> 기반 Case안 생성</span></div>
+
+        <div class="rm-report-cell" style="grid-column:5;grid-row:1/4">P-Mix 점검 Report 초안 생성</div>
+      </div>
+      </div>
+    </div>
+
+    <div class="painbar">
+      <div class="pl">Pain<br>Point</div>
+      <div class="pi">고객 맞춤형 대응으로<br>유례없는 제품 포트폴리오 확대</div>
+      <div class="pi">P-Mix 타당성 점검과<br>매출·기회비용 검토 요구 증가</div>
+      <div class="pi">P-Mix Case별 수익성을<br>신속히 검토·공유할 분석 체계 필요</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-ch="Ch 1. 과제 배경" data-title="[Back-Up] 도메인 이해">
+  <div class="head">
+    <div class="chapter">3. 도메인 이해</div>
+    <h1>[Back-Up] P-Mix 수익성 업무 프로세스</h1>
+    <div class="sub"><b>Step 2 · Step 3</b>가 이번 Agent 구현 범위입니다.</div>
+  </div>
+  <div class="body">
+    <div class="embed"><div class="in emb-dk" id="emb-dk2">
+
+  <div class="chain" style="display:flex;flex-direction:column">
+
+    <!-- 1. 수집 -->
+    <div class="dk-sec">
+      <div class="dk-sec-h"><span class="dk-badge">1</span><b>DATA 수집</b><span class="dk-org">유관 조직 : 마케팅, 원가 관리</span></div>
+      <div class="dk-flow">
+        <div class="dk-box">2월 판매 계획</div><div class="dk-arw"></div>
+        <div class="dk-box">생산/판매 확정</div><div class="dk-arw"></div>
+        <div class="dk-box">비용 계획</div><div class="dk-arw"></div>
+        <div class="dk-box dk-ind">원가 계획 (ERP)</div><div class="dk-arw"></div>
+        <div class="dk-box">손익 산출</div>
+      </div>
+    </div>
+
+    <div class="dk-vflow"></div>
+
+    <div class="agentscope"><span class="astag">Agent 구현 범위 (Step 2 · Step 3)</span>
+<!-- 2. 통합/정제 -->
+    <div class="dk-sec">
+      <div class="dk-sec-h"><span class="dk-badge">2</span><b>DATA 통합/정제</b><span class="dk-org">유관 조직 : 영업, SCM 전략기획</span></div>
+      <div class="dk-dmx">
+        <div class="dk-hd dk-a" style="grid-area:1/2/2/3">3월 판매 계획</div>
+        <div class="dk-hd dk-b" style="grid-area:1/3/2/5">2월 원가</div>
+        <div class="dk-hd dk-c" style="grid-area:1/6/2/8">수익성</div>
+        <div class="dk-vl" style="grid-area:2/1/6/2">AMT 매출액</div>
+        <div class="dk-ar" style="grid-area:2/5/6/6">➜</div>
+        <div class="dk-vl" style="grid-area:2/8/6/9">연간 수익성</div>
+
+        <!-- EQ -->
+        <div class="dk-cell" style="grid-area:2/2">EQ 환산</div>
+        <div class="dk-cell" style="grid-area:2/3">Gb/GB당 원가 (EQ)</div>
+        <div class="dk-cell" style="grid-area:2/4">현금 원가</div>
+        <div class="dk-cell dk-inc" style="grid-area:2/6">현금이익</div>
+        <div class="dk-cell dk-prof" style="grid-area:2/7">Gb/GB당 수익성(EQ)</div>
+        <!-- DIE -->
+        <div class="dk-cell" style="grid-area:3/2">DIE 환산</div>
+        <div class="dk-cell" style="grid-area:3/3">DIE당 원가</div>
+        <div class="dk-cell" style="grid-area:3/4">매출 원가</div>
+        <div class="dk-cell dk-inc" style="grid-area:3/6">매출이익</div>
+        <div class="dk-cell dk-prof" style="grid-area:3/7">DIE당 수익성</div>
+        <!-- 제품 -->
+        <div class="dk-cell" style="grid-area:4/2">제품 환산</div>
+        <div class="dk-cell" style="grid-area:4/3">제품당 원가</div>
+        <div class="dk-cell" style="grid-area:4/4">영업 원가</div>
+        <div class="dk-cell dk-inc" style="grid-area:4/6">영업이익</div>
+        <div class="dk-cell dk-prof" style="grid-area:4/7">제품당 수익성</div>
+        <!-- Wafer (제품 환산 아래) -->
+        <div class="dk-cell" style="grid-area:5/2">Wafer 환산</div>
+        <div class="dk-cell" style="grid-area:5/3">Wafer 장당 원가</div>
+        <div class="dk-cell" style="grid-area:5/4">변동 원가</div>
+        <div class="dk-cell dk-inc" style="grid-area:5/6">공헌이익</div>
+        <div class="dk-cell dk-prof" style="grid-area:5/7">Wafer 장당 수익성</div>
+      </div>
+    </div>
+
+    <div class="dk-vflow"></div>
+
+    <!-- 3. 분석/검증 -->
+    <div class="dk-sec">
+      <div class="dk-sec-h"><span class="dk-badge">3</span><b>DATA 분석/검증</b><span class="dk-org">유관 조직 : 영업</span></div>
+      <div class="dk-flow">
+        <div class="dk-box">수익성 분석</div><div class="dk-arw"></div>
+        <div class="dk-box">타당성 검증<br><span style="font-weight:500;color:var(--faint)">(Mix 효과)</span></div><div class="dk-arw"></div>
+        <div class="dk-box">결과 분석<br><span style="font-weight:500;color:var(--faint)">(기회 수익, 비용 분석)</span></div><div class="dk-arw"></div>
+        <div class="dk-box dk-ind">분석 Report</div>
+      </div>
+    </div>
+
+    <div class="dk-vflow"></div>
+
+    </div>
+<div class="dk-vflow"></div>
+<!-- 4. 활용 -->
+    <div class="dk-sec">
+      <div class="dk-sec-h"><span class="dk-badge">4</span><b>DATA 활용</b><span class="dk-org">유관 조직 : 마케팅, RP기획</span></div>
+      <div class="dk-grid2" style="max-width:560px">
+        <div class="dk-box">차월 판매 Guide</div>
+        <div class="dk-box">차월 Mix 생산 Guide 참고</div>
+      </div>
+    </div>
+  </div>
+
+    </div></div>
+  </div>
+</section>
+
+<section class="slide" data-ch="Ch 1. 요구사항" data-title="Agent 요구사항">
+  <div class="head">
+    <div class="chapter">4. Agent 요구사항</div>
+    <h1>Agent 활용 요구 3가지 기능</h1>
+  </div>
+  <div class="body">
+    <div class="fn3">
+      <div class="fnc">
+        <div class="fnh"><span class="fnn">1</span>Validation</div>
+        <div class="fnq">최신 생성 계획 버전의 수율과 원가 누락치 Validation 해줘.</div>
+      </div>
+      <div class="fnc">
+        <div class="fnh"><span class="fnn">2</span>Analysis</div>
+        <div class="fnq">경영계획 대비 6RP 버전 장당 영업이익과 EQ 판매수량 비교 분석해줘.</div>
+      </div>
+      <div class="fnc">
+        <div class="fnh"><span class="fnn">3</span>Simulation</div>
+        <div class="fnq">7월 확장 버전 SP 16G DDR5 제품을 LC 16G DDR5로 Mix 전환했을 때 분기별 수익성 변화 알려줘.</div>
+      </div>
+    </div>
+
+    <div class="preq">
+      <div class="pqh">전제 조건</div>
+      <div class="pqi">수익성 숫자 신뢰성 보장</div>
+      <div class="pqi">시스템 대비 효율적인 분석과 Simulation</div>
+      <div class="pqi">단순 수치 해석 이상의 인사이트</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-ch="Ch 2. 구현" data-title="Agent 차별성">
+  <div class="head">
+    <div class="chapter">5. Agent 차별성</div>
+    <h1>요구사항을 어떻게 구현했나</h1>
+  </div>
+  <div class="body">
+    <div class="df3">
+      <div class="dfc">
+        <div class="dh"><span class="dn">1</span>Ontology</div>
+        <div class="db">
+          <div class="it2"><span class="no">1</span>하이닉스 <b>DRAM / NAND 제품</b>을 실제 속성 Code Level에서 이해할 수 있도록 객체화·구조화, 실제 데이터 <b>Enum화 (Dimension)</b></div>
+          <div class="it2"><span class="no">2</span>수익성 지표는 <b>제품 Level, 지표에 따라 구분 (Measure)</b></div>
+          <div class="it2"><span class="no">3</span>제품의 의미와 수익성 계산식을 <b>Ontology 기반으로 Agent가 이해</b></div>
+        </div>
+      </div>
+      <div class="dfc">
+        <div class="dh"><span class="dn">2</span>집계 처리 엔진</div>
+        <div class="db">
+          <div class="it2"><span class="no">1</span><b>Agent Layer와 MCP 집계 처리 엔진</b> 역할 분리</div>
+          <div class="it2"><span class="no">2</span>계산은 <b>LLM 없이</b> 집계 처리 엔진이 담당</div>
+          <div class="it2"><span class="no">3</span><b>100% 계산 결과</b>를 신속하게 처리</div>
+        </div>
+      </div>
+      <div class="dfc">
+        <div class="dh"><span class="dn">3</span>데이터 보안 체계 준수</div>
+        <div class="db">
+          <div class="it2"><span class="no">1</span>단순 기능 검증이 아닌 <b>SKHy Agent Workflow 개발 Tool 준수</b> (LangGraph 버전이 낮음)</div>
+          <div class="it2"><span class="no">2</span>LLM이 연결된 시스템은 <b>직접 DB에 접근 불가</b></div>
+          <div class="it2"><span class="no">3</span>OPA 테이블 컬럼 혹은 호출 Tool 기반으로 <b>Agent별·사용자별 권한 체계</b> 구축 대응</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-ch="Ch 2. 구현" data-title="[Back-Up] 기능 레이어">
+  <div class="head">
+    <div class="chapter">6. Agent 주요 기능 레이어</div>
+    <h1>[Back-Up] Orchestrator 하위 기능 구성</h1>
+  </div>
+  <div class="body">
+    <div class="tree">
+      <div class="trunk">
+        <div class="orc">Orchestrator</div>
+      </div>
+      <div class="branches">
+        <div class="br">
+          <div class="fn2">Validation <span class="cnt">2</span></div>
+          <div class="det"><span class="dt">누락치 Validation</span><span class="dt next">이상치 Validation</span></div>
+        </div>
+        <div class="br">
+          <div class="fn2">Analysis <span class="cnt">4</span></div>
+          <div class="det"><span class="dt">트렌드 분석</span><span class="dt">Mix 분석</span><span class="dt">Ver간 비교 분석</span><span class="dt">원인 분석</span></div>
+        </div>
+        <div class="br">
+          <div class="fn2">Simulation <span class="cnt">3</span></div>
+          <div class="det"><span class="dt">QTY(Mix) Simulation</span><span class="dt">ASP Simulation</span><span class="dt">수율 Simulation</span></div>
+        </div>
+        <div class="br ph2">
+          <div class="fn2">Case 생성</div>
+          <div class="det"><span class="dt next">최적 P-Mix Case 탐색 및 제안</span></div>
+        </div>
+        <div class="br">
+          <div class="fn2">Data Retrieval <span class="cnt">3</span></div>
+          <div class="det"><span class="dt">Ontology 참조</span><span class="dt">수익성 Data IF</span><span class="dt">프로시저 Call</span></div>
+        </div>
+      </div>
+      <div class="legend2"><span class="sw"></span>내년도 과업 범위</div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-ch="Ch 2. 구현" data-title="[Back-Up] 상세 아키텍처">
+  <div class="head">
+    <div class="chapter">7. 상세 아키텍처</div>
+    <h1>[Back-Up] GaiA P-Mix Agent 아키텍처</h1>
+  </div>
+  <div class="body">
+    <div class="embed"><div class="in emb-dk" id="emb-dk3">
+
+  <div style="width:100%;overflow-x:auto">
+  <svg viewBox="0 0 990 440" xmlns="http://www.w3.org/2000/svg" style="width:100%;min-width:760px;height:auto;display:block;font-family:Pretendard,system-ui,sans-serif">
+    <defs>
+      <marker id="ah" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#8aa0c6"/></marker>
+      <marker id="ahi" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#3b56d6"/></marker>
+      <marker id="ahs" markerWidth="8" markerHeight="8" refX="5.5" refY="2.6" orient="auto"><path d="M0,0 L6,2.6 L0,5.2 Z" fill="#5a6577"/></marker>
+      <style>
+        .emb-dk svg text{fill:#222b38;font-size:9px}
+        .emb-dk svg .mid{text-anchor:middle}
+        .emb-dk svg .b{font-weight:700}
+        .emb-dk svg .s8{font-size:8px}
+        .emb-dk svg .ttl{font-size:10.5px;font-weight:800}
+        .emb-dk svg .num{font-size:9px;font-weight:800;fill:#fff}
+        .emb-dk svg .it{font-size:9px;font-style:italic;font-weight:700;fill:#3b56d6}
+        .emb-dk svg .mt{font-size:9.5px;font-weight:800;fill:#b2591f}
+        .emb-dk svg .lb{font-size:7.5px;fill:#7a8296}
+        .emb-dk svg .gt{font-weight:700;fill:#0d6e52}
+      </style>
+    </defs>
+
+    <!-- HCP -->
+    <rect x="8" y="14" rx="8" width="52" height="414" fill="#eef1f6" stroke="#c9d2e0"/>
+    <text class="ttl mid" transform="rotate(-90 34 221)" x="34" y="221" style="fill:#54617a;font-size:13px">HCP</text>
+
+    <!-- main frame -->
+    <rect x="70" y="14" rx="10" width="740" height="414" fill="#ffffff" stroke="#dde3ee"/>
+
+    <!-- top: chat + llm -->
+    <rect x="110" y="18" rx="5" width="104" height="30" fill="#fff" stroke="#c3ccf7"/>
+    <text class="s b mid" x="162" y="31" style="fill:#2b3ba8">GaiA Chat</text>
+    <text class="s8 mid" x="162" y="42" style="fill:#2b3ba8">(Chat UI)</text>
+    <text class="s b mid" x="374" y="28">LLM</text>
+    <text class="s mid" x="374" y="41">gaia-GLM-5.2</text>
+
+    <!-- ===== panels ===== -->
+    <rect x="78" y="54" rx="10" width="388" height="372" fill="#eaf1fb" stroke="#bcd0ec"/>
+    <text class="ttl mid" x="250" y="70">GaiA P-Mix Agent</text>
+    <text class="it" x="452" y="70" text-anchor="end">Ontology</text>
+
+    <rect x="486" y="70" rx="10" width="324" height="302" fill="#fdeede" stroke="#f0cfa8"/>
+    <text class="ttl mid" x="650" y="66" style="fill:#b2591f">G-SCM MCP Tools</text>
+
+    <rect x="820" y="268" rx="10" width="155" height="118" fill="#f6f8fb" stroke="#d5dbe6"/>
+    <text class="ttl mid" x="905" y="284" style="fill:#54617a">Legacy</text>
+
+    <!-- ===== connectors ===== -->
+    <!-- prompting (bidirectional) -->
+    <line x1="156" y1="49" x2="156" y2="85" stroke="#3b56d6" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#ahi)"/>
+    <line x1="168" y1="85" x2="168" y2="49" stroke="#3b56d6" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#ahi)"/>
+    <text class="lb" x="176" y="60" style="fill:#3b56d6">Prompting</text>
+    <!-- orchestrator <-> agent tools (bidirectional) -->
+    <line x1="115" y1="196" x2="115" y2="261" stroke="#8aa0c6" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ah)"/>
+    <line x1="129" y1="261" x2="129" y2="196" stroke="#8aa0c6" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ah)"/>
+    <text class="lb" x="135" y="230">Tool 호출 결과</text>
+    <!-- agent tools -> MCP : MCP Tool Calling (request, rightward) -->
+    <line x1="304" y1="280" x2="488" y2="280" stroke="#8aa0c6" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ah)"/>
+    <text class="lb" x="340" y="275">MCP Tool Calling</text>
+    <!-- MCP -> agent tools : 집계 Data / 처리 결과 (response, leftward) -->
+    <line x1="486" y1="294" x2="304" y2="294" stroke="#8aa0c6" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ah)"/>
+    <text class="lb" x="340" y="290">집계 Data / 처리 결과</text>
+    <!-- Memory 관리 -> redis (사용자별 Data 적재) -->
+    <polyline points="520,270 520,318 433,318" fill="none" stroke="#8aa0c6" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ah)"/>
+    <text class="lb" x="527" y="300">사용자별 Data 적재</text>
+    <!-- redis -> Memory 관리 (필요 데이터 Load) -->
+    <polyline points="432,346 572,346 572,270" fill="none" stroke="#8aa0c6" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ah)"/>
+    <text class="lb" x="452" y="360">필요 데이터 Load (Analysis, Simulation)</text>
+    <!-- MCP -> legacy (SQL Execution, rightward into DB) -->
+    <polyline points="804,232 818,232 818,322 828,322" fill="none" stroke="#8aa0c6" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ah)"/>
+    <text class="lb mid" x="822" y="255">SQL Execution</text>
+
+
+    <!-- ===== Orchestrator ===== -->
+    <rect x="96" y="88" rx="6" width="208" height="108" fill="#fff" stroke="#c7d0e0"/>
+    <text class="s b mid" x="200" y="101">Orchestrator</text>
+    <rect x="102" y="106" rx="4" width="58" height="30" fill="#f5f7fb" stroke="#d3dbe8"/>
+    <text class="s8 mid" x="131" y="118">분석 및</text><text class="s8 mid" x="131" y="129">응답 생성</text>
+    <rect x="168" y="106" rx="4" width="58" height="30" fill="#f5f7fb" stroke="#d3dbe8"/>
+    <text class="s8 mid" x="197" y="118">응답 보완</text><text class="s8 mid" x="197" y="129">필요 판단</text>
+    <rect x="234" y="106" rx="4" width="62" height="30" fill="#f5f7fb" stroke="#d3dbe8"/>
+    <text class="s8 mid" x="265" y="118">최종 응답</text><text class="s8 mid" x="265" y="129">생성</text>
+    <line x1="160" y1="121" x2="168" y2="121" stroke="#5a6577" stroke-width="1.2" marker-end="url(#ahs)"/>
+    <line x1="226" y1="121" x2="234" y2="121" stroke="#5a6577" stroke-width="1.2" marker-end="url(#ahs)"/>
+    <line x1="205" y1="137" x2="205" y2="158" stroke="#5a6577" stroke-width="1.2" marker-end="url(#ahs)"/>
+    <line x1="131" y1="159" x2="131" y2="137" stroke="#5a6577" stroke-width="1.2" marker-end="url(#ahs)"/>
+    <text class="lb mid" x="166" y="151">최대 10회 Loop</text>
+    <rect x="102" y="160" rx="4" width="58" height="30" fill="#f5f7fb" stroke="#d3dbe8"/>
+    <text class="s8 mid" x="131" y="172">Binding</text><text class="s8 mid" x="131" y="183">Tool 호출</text>
+    <rect x="176" y="160" rx="4" width="58" height="30" fill="#f5f7fb" stroke="#d3dbe8"/>
+    <text class="s8 mid" x="205" y="172">파라미터</text><text class="s8 mid" x="205" y="183">변환</text>
+    <line x1="176" y1="175" x2="162" y2="175" stroke="#5a6577" stroke-width="1.2" marker-end="url(#ahs)"/>
+    <text class="it" x="300" y="209" text-anchor="end">ReAct Pattern</text>
+
+    <!-- ===== LLM 판단 근거 ===== -->
+    <rect x="312" y="88" rx="6" width="150" height="90" fill="#fff" stroke="#c7d0e0"/>
+    <text class="s b mid" x="387" y="101">LLM 판단 근거</text>
+    <rect x="318" y="108" rx="4" width="68" height="26" fill="#f5f7fb" stroke="#d3dbe8"/>
+    <text class="s8 mid" x="352" y="124">Chat History</text>
+    <rect x="390" y="108" rx="4" width="68" height="26" fill="#f5f7fb" stroke="#d3dbe8"/>
+    <text class="s8 mid" x="424" y="120">Semantic</text><text class="s8 mid" x="424" y="131">Layer</text>
+    <rect x="318" y="140" rx="4" width="68" height="26" fill="#f5f7fb" stroke="#d3dbe8"/>
+    <text class="s8 mid" x="352" y="156">Prompt</text>
+    <rect x="390" y="140" rx="4" width="68" height="26" fill="#f5f7fb" stroke="#d3dbe8"/>
+    <text class="s8 mid" x="424" y="152">Pseudo</text><text class="s8 mid" x="424" y="163">Code</text>
+    <text class="it mid" x="387" y="191">Context Retention</text>
+    <text class="it mid" x="387" y="203">Parameter Mapping</text>
+
+    <!-- ===== Agent Tools ===== -->
+    <text class="it" x="112" y="255">Tool Binding</text>
+    <rect x="96" y="262" rx="6" width="208" height="96" fill="#fff" stroke="#c7d0e0"/>
+    <text class="s b mid" x="150" y="275">Agent Tools</text>
+    <rect x="102" y="280" rx="4" width="60" height="28" fill="#f5f7fb" stroke="#d3dbe8"/>
+    <text class="s8 mid" x="132" y="291">필요 데이터</text><text class="s8 mid" x="132" y="302">Load</text>
+    <rect x="168" y="280" rx="4" width="58" height="28" fill="#daf3e7" stroke="#7fd3ae"/>
+    <text class="s8 gt mid" x="197" y="297">Validation</text>
+    <rect x="232" y="280" rx="4" width="64" height="28" fill="#daf3e7" stroke="#7fd3ae"/>
+    <text class="s8 gt mid" x="264" y="297">분석 Report</text>
+    <rect x="102" y="314" rx="4" width="60" height="28" fill="#f5f7fb" stroke="#d3dbe8"/>
+    <text class="s8 mid" x="132" y="331">Analysis</text>
+    <rect x="168" y="314" rx="4" width="58" height="28" fill="#f5f7fb" stroke="#d3dbe8"/>
+    <text class="s8 mid" x="197" y="331">Simulation</text>
+
+    <!-- ===== Redis cylinder ===== -->
+    <path d="M360 308 V360 A35 7 0 0 0 430 360 V308" fill="#eef2ff" stroke="#b9c4f2"/>
+    <ellipse cx="395" cy="308" rx="35" ry="7" fill="#f2f5ff" stroke="#b9c4f2"/>
+    <text class="s8 b mid" x="395" y="326" style="fill:#2b3ba8">Redis</text>
+    <text class="s8 b mid" x="395" y="338" style="fill:#2b3ba8">Memory</text>
+    <text class="s8 b mid" x="395" y="350" style="fill:#2b3ba8">Storage</text>
+
+    <!-- ===== MCP sub-panels ===== -->
+    <rect x="496" y="80" rx="6" width="150" height="94" fill="#fff" stroke="#efd3b6"/>
+    <text class="mt mid" x="571" y="93">집계 처리 엔진</text>
+    <rect x="502" y="100" rx="4" width="68" height="26" fill="#f8f5f2" stroke="#e7d6c6"/><text class="s8 mid" x="536" y="116">Pivot</text>
+    <rect x="574" y="100" rx="4" width="68" height="26" fill="#f8f5f2" stroke="#e7d6c6"/><text class="s8 mid" x="608" y="116">가중 평균</text>
+    <rect x="502" y="132" rx="4" width="68" height="26" fill="#f8f5f2" stroke="#e7d6c6"/><text class="s8 mid" x="536" y="148">Roll-Up</text>
+    <rect x="574" y="132" rx="4" width="68" height="26" fill="#f8f5f2" stroke="#e7d6c6"/><text class="s8 mid" x="608" y="148">Simulation</text>
+
+    <rect x="652" y="80" rx="6" width="152" height="94" fill="#fff" stroke="#efd3b6"/>
+    <text class="mt mid" x="728" y="93">동적 그리드 생성</text>
+    <rect x="658" y="104" rx="4" width="66" height="52" fill="#f8f5f2" stroke="#e7d6c6"/>
+    <text class="s8 mid" x="691" y="127">HTML</text><text class="s8 mid" x="691" y="138">Render</text>
+    <rect x="728" y="104" rx="4" width="70" height="52" fill="#f8f5f2" stroke="#e7d6c6"/><text class="s8 mid" x="763" y="133">Ag-Grid</text>
+
+    <rect x="496" y="182" rx="6" width="150" height="88" fill="#fff" stroke="#efd3b6"/>
+    <text class="s b mid" x="571" y="195">Memory 관리</text>
+    <rect x="502" y="202" rx="4" width="68" height="56" fill="#f8f5f2" stroke="#e7d6c6"/>
+    <text class="s8 mid" x="536" y="227">메모리</text><text class="s8 mid" x="536" y="238">관리</text>
+    <rect x="574" y="202" rx="4" width="68" height="56" fill="#f8f5f2" stroke="#e7d6c6"/>
+    <text class="s8 mid" x="608" y="227">Simulation</text><text class="s8 mid" x="608" y="238">이력 저장</text>
+
+    <rect x="652" y="182" rx="6" width="152" height="88" fill="#fff" stroke="#efd3b6"/>
+    <text class="s b mid" x="728" y="195">DB 관리</text>
+    <rect x="658" y="202" rx="4" width="66" height="56" fill="#f8f5f2" stroke="#e7d6c6"/><text class="s8 mid" x="691" y="233">SQL 실행</text>
+    <rect x="728" y="202" rx="4" width="70" height="56" fill="#f8f5f2" stroke="#e7d6c6"/>
+    <text class="s8 mid" x="763" y="227">프로시저</text><text class="s8 mid" x="763" y="238">호출</text>
+
+    <!-- ===== Legacy ===== -->
+    <path d="M828 306 V366 A36 7 0 0 0 900 366 V306" fill="#eef2ff" stroke="#b9c4f2"/>
+    <ellipse cx="864" cy="306" rx="36" ry="7" fill="#f2f5ff" stroke="#b9c4f2"/>
+    <text class="s8 b mid" x="864" y="332" style="fill:#2b3ba8">G-SCM DB</text>
+    <text class="s8 b mid" x="864" y="344" style="fill:#2b3ba8">(Oracle)</text>
+    <rect x="906" y="300" rx="4" width="64" height="78" fill="#fff" stroke="#cfd8e6"/>
+    <text class="s8 b mid" x="938" y="313">Table</text>
+    <line x1="906" y1="318" x2="970" y2="318" stroke="#e2e7f0"/>
+    <text class="s8 mid" x="938" y="333" style="fill:#c0492b">장당수익성</text>
+    <text class="s8 mid" x="938" y="350" style="fill:#c0492b">리버전</text>
+    <text class="s8 mid" x="938" y="367" style="fill:#c0492b">환율</text>
+
+    <!-- number badges (drawn last, always on top) -->
+    <circle cx="116" cy="64" r="8" fill="#3b56d6"/><text class="num mid" x="116" y="67">1</text>
+    <circle cx="92" cy="97" r="8" fill="#3b56d6"/><text class="num mid" x="92" y="100">2</text>
+    <circle cx="92" cy="253" r="8" fill="#3b56d6"/><text class="num mid" x="92" y="256">3</text>
+    <circle cx="498" cy="62" r="8" fill="#3b56d6"/><text class="num mid" x="498" y="65">4</text>
+    <circle cx="432" cy="304" r="8" fill="#3b56d6"/><text class="num mid" x="432" y="307">5</text>
+    <circle cx="830" cy="300" r="8" fill="#3b56d6"/><text class="num mid" x="830" y="303">5</text>
+  </svg>
+  </div>
+
+    </div></div>
+  </div>
+</section>
+
+<section class="slide" data-ch="Ch 3. To-Be" data-title="To-Be Action">
+  <div class="head">
+    <div class="chapter">8. To-Be Action</div>
+    <h1>최적의 Case Generation</h1>
+  </div>
+  <div class="body">
+    <div class="tob">
+      <div class="tcard now">
+        <div class="badge2" style="background:#7C8699">구축 완료</div>
+        <div class="th">지금까지 Agent를 통해 구축한 기능</div>
+        <div class="chips">
+          <span class="cp">Validation</span>
+          <span class="cp">Analysis</span>
+          <span class="cp">Simulation</span>
+        </div>
+        <div class="tv">기존 시스템과 사람이 하는 업무의 <b>효율화</b><br>
+        다양한 조건으로 Simulation 하고, 조건별 수익성 변화를 실시간으로 볼 수 있는 체계 마련</div>
+      </div>
+      <div class="tcard next">
+        <div class="badge2">내년도 과업 예정</div>
+        <div class="th">앞으로 할 것</div>
+        <div class="chips"><span class="cp">Case Generation</span></div>
+        <div class="tv">사람이 Simulation 값을 제시하는 것이 아닌,<br>
+        <b>최적의 Simulation 변경 P-Mix 구성을 Agent가 제시</b><br>
+        업무 효율화를 넘어 <b>새로운 가치 창출</b></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-ch="Ch 3. 정리" data-title="Lesson Learned">
+  <div class="head">
+    <div class="chapter">9. Lesson Learned</div>
+    <h1>이번 과제에서 얻은 것</h1>
+  </div>
+  <div class="body">
+    <div class="llv">
+      <div class="lv">
+        <div class="lvn">1</div>
+        <div class="lvb">
+          <div class="lvt">정확하고 복잡한 계산 로직의 System Agent 사례</div>
+          <ul>
+            <li>판단과 추론은 Agent Layer가, 계산 로직은 LLM이 개입하지 않는 MCP Layer가 담당</li>
+          </ul>
+        </div>
+      </div>
+      <div class="lv">
+        <div class="lvn">2</div>
+        <div class="lvb">
+          <div class="lvt">검증 가능한 체계와 데이터 정비 우선</div>
+          <ul>
+            <li>성공적으로 Agent를 구축하기 위해선 요구 기능별로 검증 가능한 체계가 먼저 마련되어야 함</li>
+            <li>그보다 앞서 Agent에 맞춘 데이터 체계 구축이 선행되어야 함</li>
+          </ul>
+        </div>
+      </div>
+      <div class="lv">
+        <div class="lvn">3</div>
+        <div class="lvb">
+          <div class="lvt">보안 표준 준수가 설계 제약</div>
+          <ul>
+            <li>하이닉스 Workflow 개발 Tool 준수</li>
+            <li>DB 접근 및 OPA 등 보안 체계 준수</li>
+            <li>설계 제약을 고려한 아키텍처 설계</li>
+          </ul>
+        </div>
+      </div>
+      <div class="lv">
+        <div class="lvn">4</div>
+        <div class="lvb">
+          <div class="lvt">다른 Agent 확장</div>
+          <ul>
+            <li>AI 기반 G-SCM의 방향성에 대한 모범답안 제시</li>
+            <li>G-SCM뿐 아니라 다른 도메인 영역에도 적용 가능한 사례</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<div id="bar"></div>
+</div></div>
+<div id="ov"><div id="ovg"></div></div>
+<div id="help">← → 이동 &nbsp;·&nbsp; O 전체보기 &nbsp;·&nbsp; F 전체화면 &nbsp;·&nbsp; Ctrl+P PDF 저장</div>
+<script>
+(function(){
+  var slides=[].slice.call(document.querySelectorAll('.slide'));
+  var deck=document.getElementById('deck'),bar=document.getElementById('bar');
+  var ov=document.getElementById('ov'),ovg=document.getElementById('ovg');
+  var i=0;
+  slides.forEach(function(s,n){
+    if(!s.classList.contains('cover')){
+      var p=document.createElement('div');p.className='pageno';
+      p.textContent=(n+1)+' / '+slides.length;s.appendChild(p);
+    }
+    var t=document.createElement('div');t.className='thumb';
+    t.innerHTML='<div class="tc">'+(s.dataset.ch||'')+'</div><div class="tt">'+(s.dataset.title||'')+'</div><div class="tn">'+(n+1)+'</div>';
+    t.onclick=function(){go(n);toggleOv(false);};ovg.appendChild(t);
+  });
+  function fit(){
+    var s=Math.min(window.innerWidth/1280,window.innerHeight/720);
+    deck.style.transform='scale('+s+')';
+  }
+  /* scale embedded diagrams to fit their slide body */
+  function fitEmbeds(){
+    [].forEach.call(document.querySelectorAll('.embed>.in'),function(el){
+      var box=el.parentElement;
+      el.style.transform='none';
+      var w=el.scrollWidth,h=el.scrollHeight;
+      var bw=box.clientWidth,bh=box.clientHeight;
+      if(!w||!h||!bw||!bh)return;
+      var cap=el.closest('.slide')&&el.closest('.slide').dataset.title==='[Back-Up] 도메인 이해'?3.2:1.9;
+      var s=Math.min(bw/w,bh/h,cap);
+      el.style.width=w+'px';
+      el.style.transform='scale('+s+')';
+    });
+  }
+  function go(n){
+    if(n<0||n>=slides.length)return;
+    slides[i].classList.remove('on');i=n;slides[i].classList.add('on');
+    bar.style.width=((i+1)/slides.length*100)+'%';
+    [].forEach.call(ovg.children,function(c,k){c.classList.toggle('cur',k===i);});
+    location.hash=i+1;
+    requestAnimationFrame(fitEmbeds);
+  }
+  function toggleOv(f){ov.classList.toggle('on',f===undefined?!ov.classList.contains('on'):f);}
+  document.addEventListener('keydown',function(e){
+    var k=e.key;
+    if(k==='ArrowRight'||k==='PageDown'||k===' '){e.preventDefault();go(i+1);}
+    else if(k==='ArrowLeft'||k==='PageUp'){e.preventDefault();go(i-1);}
+    else if(k==='Home'){go(0);}else if(k==='End'){go(slides.length-1);}
+    else if(k==='o'||k==='O'){toggleOv();}
+    else if(k==='Escape'){toggleOv(false);}
+    else if(k==='f'||k==='F'){
+      if(document.fullscreenElement)document.exitFullscreen();
+      else document.documentElement.requestFullscreen();
+    }
+  });
+  deck.addEventListener('click',function(e){
+    if(e.clientX>window.innerWidth*0.62)go(i+1);
+    else if(e.clientX<window.innerWidth*0.38)go(i-1);
+  });
+  var hp=document.getElementById('help'),tm;
+  function poke(){hp.classList.remove('hide');clearTimeout(tm);tm=setTimeout(function(){hp.classList.add('hide');},3500);}
+  document.addEventListener('mousemove',poke);document.addEventListener('keydown',poke);poke();
+  window.addEventListener('resize',function(){fit();fitEmbeds();});
+  fit();
+  var h=parseInt(location.hash.replace('#',''),10);
+  go(h>0&&h<=slides.length?h-1:0);
+  window.addEventListener('load',fitEmbeds);
+  setTimeout(fitEmbeds,300);
+})();
+</script>
+</body>
+</html>
